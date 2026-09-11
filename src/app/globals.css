@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-display font-normal;
+  }
+}
+
+@layer components {
+  .label-caps {
+    @apply text-[11px] uppercase tracking-widest2 text-stone;
+  }
+  .btn-primary {
+    @apply inline-block bg-ink text-paper px-6 py-3 text-[12px] uppercase tracking-widest2 hover:bg-accent transition-colors;
+  }
+  .btn-secondary {
+    @apply inline-block border border-ink text-ink px-6 py-3 text-[12px] uppercase tracking-widest2 hover:border-accent hover:text-accent transition-colors;
+  }
+  .hairline {
+    @apply border-line;
+  }
+}
+
+/* print stylesheet for edition label sheets */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

@@ -1,0 +1,226 @@
+// Slowly Downward — data model
+// Core idea: a Print is a limited-edition design; each physical numbered copy
+// is its own Edition row, which is the unit of stock, location, and sale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // DATABASE_URL: Supabase's pooled connection (port 6543, via PgBouncer) —
+  // what the running app uses. Serverless functions (Vercel) open lots of
+  // short-lived connections, and the pooler is what stops that exhausting
+  // Postgres's own connection limit.
+  url       = env("DATABASE_URL")
+  // DIRECT_URL: Supabase's direct connection (port 5432) — only used when
+  // running `prisma migrate`, which needs a non-pooled connection.
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  SALES
+  STOCK
+  PACKER
+}
+
+enum EditionStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  WITHHELD // artist proofs, damaged, not for sale
+  DAMAGED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PACKING
+  PACKED
+  SHIPPED
+  CANCELLED
+  REFUNDED
+}
+
+enum ShippingCarrier {
+  ROYAL_MAIL
+  UPS
+  COLLECTION
+  UNASSIGNED
+}
+
+enum IntegrationProvider {
+  STRIPE
+  UPS
+  ROYAL_MAIL
+  MAILCHIMP
+  XERO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  packedOrders Order[]     @relation("PackedBy")
+  auditLogs    AuditLog[]
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  firstName      String?
+  lastName       String?
+  phone          String?
+  marketingOptIn Boolean  @default(false)
+  mailchimpId    String?
+  xeroContactId  String?
+  createdAt      DateTime @default(now())
+
+  orders Order[]
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  heroImageUrl String?
+  published   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  prints Print[]
+}
+
+model Print {
+  id               String   @id @default(cuid())
+  collectionId     String?
+  collection       Collection? @relation(fields: [collectionId], references: [id])
+  title            String
+  slug             String   @unique
+  artist           String   @default("Stanley Donwood")
+  description      String?
+  technique        String?  // e.g. "Screenprint, 6 colours"
+  dimensions       String?  // e.g. "560 x 760mm"
+  year             Int?
+  priceMinor       Int      // price in pence
+  currency         String   @default("GBP")
+  primaryImageUrl  String?
+  imageUrls        Json?    // string[] of additional images
+  editionSize      Int
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  editions  Edition[]
+  orderItems OrderItem[]
+}
+
+model StockLocation {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. "C3-D5" (Cabinet 3, Drawer 5)
+  description String?
+  createdAt   DateTime @default(now())
+
+  editions Edition[]
+}
+
+model Edition {
+  id         String        @id @default(cuid())
+  printId    String
+  print      Print         @relation(fields: [printId], references: [id])
+  number     Int           // the edition number, e.g. 47 of 200
+  status     EditionStatus @default(AVAILABLE)
+  locationId String?
+  location   StockLocation? @relation(fields: [locationId], references: [id])
+  notes      String?
+  soldAt     DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  orderItem OrderItem?
+
+  @@unique([printId, number])
+  @@index([status])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+  customerId        String
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  status            OrderStatus @default(PENDING_PAYMENT)
+
+  stripeSessionId       String?  @unique
+  stripePaymentIntentId String?  @unique
+
+  subtotalMinor Int
+  shippingMinor Int      @default(0)
+  totalMinor    Int
+  currency      String   @default("GBP")
+
+  shippingName    String?
+  shippingAddress Json?
+  billingAddress  Json?
+
+  shippingCarrier ShippingCarrier @default(UNASSIGNED)
+  trackingNumber  String?
+  labelUrl        String?
+  shippedAt       DateTime?
+
+  packedByUserId String?
+  packedBy       User?   @relation("PackedBy", fields: [packedByUserId], references: [id])
+  packedAt       DateTime?
+
+  xeroInvoiceId    String?
+  mailchimpSynced  Boolean @default(false)
+
+  customerNote String? // e.g. "please send edition #12 if available"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                     String  @id @default(cuid())
+  orderId                String
+  order                  Order   @relation(fields: [orderId], references: [id])
+  printId                String
+  print                  Print   @relation(fields: [printId], references: [id])
+  editionId              String? @unique
+  edition                Edition? @relation(fields: [editionId], references: [id])
+  requestedEditionNumber Int?
+  unitPriceMinor         Int
+
+  createdAt DateTime @default(now())
+}
+
+model IntegrationSetting {
+  id        String              @id @default(cuid())
+  provider  IntegrationProvider @unique
+  enabled   Boolean             @default(false)
+  config    Json                // provider-specific: keys, ids, sandbox flags (store secrets via env vars where possible)
+  updatedAt DateTime            @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  meta       Json?
+  createdAt  DateTime @default(now())
+}
