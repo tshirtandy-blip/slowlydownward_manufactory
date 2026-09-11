@@ -3,6 +3,8 @@ import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthSessionProvider } from "@/components/AuthSessionProvider";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Slowly Downward — Limited edition prints by Stanley Donwood",
   description:
