@@ -9,6 +9,7 @@ import { canAccess } from "@/lib/rbac";
 const NAV: { href: string; label: string; section: string }[] = [
   { href: "/admin/dashboard", label: "Dashboard", section: "dashboard" },
   { href: "/admin/orders", label: "Orders", section: "orders" },
+  { href: "/admin/customers", label: "Clients", section: "customers" },
   { href: "/admin/pack", label: "Packing queue", section: "pack" },
   { href: "/admin/products", label: "Product", section: "products" },
   { href: "/admin/reports", label: "Reports", section: "reports" },

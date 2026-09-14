@@ -3,7 +3,7 @@ import { OrderStatus } from "@prisma/client";
 
 // Order statuses that mean the customer actually owns the item — excludes
 // PENDING_PAYMENT (not paid yet), CANCELLED and REFUNDED (no longer theirs).
-const OWNED_STATUSES: OrderStatus[] = [
+export const OWNED_STATUSES: OrderStatus[] = [
   OrderStatus.PAID,
   OrderStatus.PACKING,
   OrderStatus.PACKED,
