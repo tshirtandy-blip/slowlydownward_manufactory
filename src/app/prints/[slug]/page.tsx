@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { customerOwnsPrint, getCustomerPiecesForPrint } from "@/lib/customer-collection";
@@ -88,10 +87,18 @@ export default async function PrintPage({
         <div>
           <p className="label-caps mb-2">{print.artist}</p>
           <h1 className="font-display text-3xl md:text-4xl mb-4">{print.title}</h1>
-          <PriceTag priceMinor={print.priceMinor} currency={print.currency} className="text-lg mb-1 block" />
-          <p className="label-caps mb-6">
-            {editionSummary(availableNumbers.length, print.editionSize)}
-          </p>
+          {viewingOwnedOnly ? (
+            <p className="label-caps mb-6">
+              {print.editionSize ? `Edition of ${print.editionSize}` : "Open edition"}
+            </p>
+          ) : (
+            <>
+              <PriceTag priceMinor={print.priceMinor} currency={print.currency} className="text-lg mb-1 block" />
+              <p className="label-caps mb-6">
+                {editionSummary(availableNumbers.length, print.editionSize)}
+              </p>
+            </>
+          )}
 
           {print.description && (
             <div className="mb-6">
@@ -127,7 +134,7 @@ export default async function PrintPage({
           </dl>
 
           {viewingOwnedOnly ? (
-            <div className="border hairline p-5">
+            <div>
               <p className="label-caps mb-3">In your collection</p>
               {ownedPieces.map((piece) => (
                 <p key={piece.orderItemId} className="text-sm text-stone mb-1">
@@ -137,11 +144,6 @@ export default async function PrintPage({
                   — order {piece.orderNumber}
                 </p>
               ))}
-              {print.published && (
-                <Link href={`/prints/${print.slug}`} className="btn-secondary inline-block mt-4">
-                  View in shop
-                </Link>
-              )}
             </div>
           ) : (
             <AddToCartForm

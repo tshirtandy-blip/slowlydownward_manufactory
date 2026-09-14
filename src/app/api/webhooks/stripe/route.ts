@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { allocateEdition } from "@/lib/editions";
 import { upsertMailchimpMember, mailchimpConfigured } from "@/lib/integrations/mailchimp";
 import { createXeroInvoiceForOrder, xeroConfigured } from "@/lib/integrations/xero";
+import { sendEmail, emailConfigured } from "@/lib/integrations/resend";
+import { renderOrderConfirmationEmail } from "@/lib/email-templates";
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -124,8 +126,32 @@ export async function POST(req: Request) {
 
     // Side-effects: never let a failure here affect order fulfillment, which
     // has already succeeded above.
-    const order = await prisma.order.findUnique({ where: { id: orderId }, include: { customer: true } });
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { customer: true, items: { include: { print: true, edition: true } } },
+    });
     if (order) {
+      if (emailConfigured()) {
+        try {
+          const { subject, html } = await renderOrderConfirmationEmail({
+            customerName: order.customer.firstName || "there",
+            orderNumber: order.orderNumber,
+            items: order.items.map((i) => ({
+              title: i.print.title,
+              editionNumber: i.edition?.number ?? null,
+              priceMinor: i.unitPriceMinor,
+              currency: order.currency,
+            })),
+            subtotalMinor: order.subtotalMinor,
+            shippingMinor: order.shippingMinor,
+            totalMinor: order.totalMinor,
+            currency: order.currency,
+          });
+          await sendEmail({ to: order.customer.email, subject, html });
+        } catch (err) {
+          await logFailure(orderId, "order_confirmation_email_failed", err);
+        }
+      }
       if (mailchimpConfigured()) {
         try {
           await upsertMailchimpMember({

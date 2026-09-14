@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, emailConfigured } from "@/lib/integrations/resend";
+import { renderWelcomeEmail } from "@/lib/email-templates";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -37,6 +39,17 @@ export async function POST(req: Request) {
       update: { passwordHash, firstName: firstName || undefined, lastName: lastName || undefined },
       create: { email: normalizedEmail, passwordHash, firstName: firstName || null, lastName: lastName || null },
     });
+
+    // Best-effort — a failed welcome email shouldn't stop the account from
+    // being created; they can still sign in and use it either way.
+    if (emailConfigured()) {
+      try {
+        const { subject, html } = await renderWelcomeEmail({ customerName: firstName || "there" });
+        await sendEmail({ to: normalizedEmail, subject, html });
+      } catch (err) {
+        console.error("Welcome email failed to send:", err);
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

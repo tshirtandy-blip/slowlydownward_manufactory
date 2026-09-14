@@ -1,10 +1,11 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { generateOrderNumber, formatMinor } from "@/lib/money";
+import { generateOrderNumber } from "@/lib/money";
 import { getShippingZones, zoneForCountry } from "@/lib/shipping";
 import { releaseExpiredReservations } from "@/lib/edition-reservations";
 import { sendEmail } from "@/lib/integrations/resend";
+import { renderPaymentLinkEmail } from "@/lib/email-templates";
 import { countryName } from "@/lib/countries";
 
 /**
@@ -32,58 +33,6 @@ export type ManualOrderItemInput = {
 export type CreateManualOrderResult =
   | { ok: true; orderId: string; paymentLinkUrl: string | null; emailSent: boolean; emailError?: string; linkError?: string }
   | { ok: false; error: string };
-
-function renderPaymentLinkEmail(params: {
-  orderNumber: string;
-  paymentLinkUrl: string;
-  items: { title: string; editionNumber: number | null; priceMinor: number; currency: string }[];
-  subtotalMinor: number;
-  shippingMinor: number;
-  totalMinor: number;
-  currency: string;
-}) {
-  const rows = params.items
-    .map(
-      (i) => `
-        <tr>
-          <td style="padding:8px 0;border-bottom:1px solid #e5e0d8;">
-            ${i.title}${i.editionNumber ? ` — edition #${i.editionNumber}` : ""}
-          </td>
-          <td style="padding:8px 0;border-bottom:1px solid #e5e0d8;text-align:right;white-space:nowrap;">
-            ${formatMinor(i.priceMinor, i.currency)}
-          </td>
-        </tr>`
-    )
-    .join("");
-
-  return `
-    <div style="font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;max-width:520px;margin:0 auto;">
-      <p>Hello,</p>
-      <p>Thank you for your order with Slowly Downward. Please use the link below to complete payment and provide your shipping details.</p>
-      <table style="width:100%;border-collapse:collapse;margin:24px 0;font-size:14px;">
-        ${rows}
-        <tr>
-          <td style="padding:8px 0;">Subtotal</td>
-          <td style="padding:8px 0;text-align:right;">${formatMinor(params.subtotalMinor, params.currency)}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0;">Shipping</td>
-          <td style="padding:8px 0;text-align:right;">${formatMinor(params.shippingMinor, params.currency)}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0;font-weight:bold;">Total</td>
-          <td style="padding:8px 0;text-align:right;font-weight:bold;">${formatMinor(params.totalMinor, params.currency)}</td>
-        </tr>
-      </table>
-      <p style="text-align:center;margin:32px 0;">
-        <a href="${params.paymentLinkUrl}" style="background:#1a1a1a;color:#fdfaf4;padding:14px 28px;text-decoration:none;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;">
-          Complete your order
-        </a>
-      </p>
-      <p style="font-size:12px;color:#6b6558;">Order ${params.orderNumber}. This link is reserved for you — the item(s) above are being held pending your payment.</p>
-    </div>
-  `;
-}
 
 /** Creates or refreshes the Stripe Checkout Session (and payment link) for
  * an existing manual order — used both right after creating one, and by
@@ -157,7 +106,7 @@ export async function sendPaymentLinkEmailForOrder(orderId: string) {
     throw new Error("No payment link yet — generate one first.");
   }
 
-  const html = renderPaymentLinkEmail({
+  const { subject, html } = await renderPaymentLinkEmail({
     orderNumber: order.orderNumber,
     paymentLinkUrl: order.paymentLinkUrl,
     items: order.items.map((i) => ({
@@ -174,7 +123,7 @@ export async function sendPaymentLinkEmailForOrder(orderId: string) {
 
   await sendEmail({
     to: order.customer.email,
-    subject: `Complete your order — ${order.orderNumber} — Slowly Downward`,
+    subject,
     html,
   });
 

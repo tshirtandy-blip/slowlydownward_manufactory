@@ -56,7 +56,7 @@ export default async function IntegrationsPage() {
         <div>
           <h2 className="font-display">Resend (email)</h2>
           <p className="text-sm text-stone">
-            Sends the payment-link email for a manual order (Admin &gt; Orders &gt; New manual order).
+            Sends the payment-link, order confirmation and welcome emails — wording editable under Settings &gt; Emails.
           </p>
         </div>
         <StatusPill ok={emailConfigured()} />

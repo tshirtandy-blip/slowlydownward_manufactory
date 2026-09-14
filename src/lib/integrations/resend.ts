@@ -1,9 +1,9 @@
 /**
- * Transactional email via Resend (https://resend.com) — currently used only
- * for one thing: emailing a client the payment link for a manual order
- * (Admin > Orders > New manual order). Nothing else in the app sends real
- * email yet; general order/shipping notification emails are a separate,
- * later piece of work.
+ * Transactional email via Resend (https://resend.com) — sends the payment
+ * link for a manual order, the storefront order confirmation, and the new
+ * account welcome email. The actual wording for all of these is admin-
+ * editable (Admin > Settings > Emails, see src/lib/email-templates.ts);
+ * this file only knows how to hand a rendered subject/html off to Resend.
  *
  * Setup (see README): sign up at resend.com, verify a sending domain (or
  * use their shared test domain while you're just trying this out), create

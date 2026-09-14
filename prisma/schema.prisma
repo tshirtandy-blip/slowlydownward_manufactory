@@ -188,6 +188,20 @@ model Address {
   @@index([customerId])
 }
 
+// Wording for the site's transactional emails, editable from Admin >
+// Settings > Emails — see src/lib/email-templates.ts. Structural parts of
+// each email (the items table, the payment button, etc.) are generated in
+// code so they always render correctly; only the surrounding message is
+// stored here.
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  subject     String
+  introHtml   String
+  closingHtml String   @default("")
+  updatedAt   DateTime @updatedAt
+}
+
 model Collection {
   id          String   @id @default(cuid())
   title       String
