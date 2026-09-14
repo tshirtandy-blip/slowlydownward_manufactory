@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const pdf = await buildCommercialInvoicePdf({ order, shipFrom, shipTo });
 
-  return new NextResponse(pdf, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${order.orderNumber}-commercial-invoice.pdf"`,

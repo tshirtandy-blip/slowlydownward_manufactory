@@ -24,7 +24,10 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
     // of inline styles or bare <div>s, so the sanitizer's small tag
     // allowlist covers whatever actually comes out of the editor.
     try {
-      document.execCommand("styleWithCSS", false, false);
+      // execCommand's TS signature says its 3rd arg is always a string, but
+      // this particular legacy command actually wants a real boolean at
+      // runtime — hence the cast rather than passing "false" as text.
+      document.execCommand("styleWithCSS", false, false as unknown as string);
       document.execCommand("defaultParagraphSeparator", false, "p");
     } catch {
       // Unsupported in some browsers — formatting still works, just with
