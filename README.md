@@ -135,6 +135,15 @@ Using accounts you already have:
    - `STRIPE_WEBHOOK_SECRET` — see step 5 below (you'll come back and add this
      after the first deploy, since it needs the live URL to exist first)
    - `STORE_URL` — same as `NEXTAUTH_URL`
+   - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — same Supabase
+     project as `DATABASE_URL` (step 2); see "Image uploads" below. Without
+     these the drag-and-drop image picker won't work on the live site, even
+     if they're set correctly in your own local `.env` — Vercel keeps its
+     own separate copy of every environment variable, so each one has to be
+     added here too.
+   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL` — see "Resend" below. Without
+     these, order confirmation/payment-link/welcome emails silently don't
+     send (everything else still works).
    - Leave the UPS/Royal Mail/Mailchimp/Xero variables blank for now — the
      app runs fine without them and just shows those integrations as "Not
      connected" in Admin → Settings.
