@@ -160,7 +160,32 @@ model Customer {
   passwordHash   String?
   createdAt      DateTime @default(now())
 
-  orders Order[]
+  orders    Order[]
+  addresses Address[]
+}
+
+// A customer's saved shipping addresses — for their own reference in the
+// account area (src/app/account/addresses). Not yet wired into checkout
+// itself, since Stripe Checkout collects its own address on its hosted
+// page; this is a personal address book, not an autofill source (yet).
+model Address {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  label       String? // e.g. "Home", "Studio" — just so more than one is easy to tell apart
+  fullName    String
+  line1       String
+  line2       String?
+  city        String
+  region      String? // county/state — optional, not every country uses one
+  postalCode  String
+  countryCode String  // ISO 3166-1 alpha-2, matches src/lib/countries.ts
+  phone       String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 model Collection {

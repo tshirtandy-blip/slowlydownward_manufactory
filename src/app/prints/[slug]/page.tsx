@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { customerOwnsPrint } from "@/lib/customer-collection";
 import { SiteHeader } from "@/components/storefront/SiteHeader";
 import { SiteFooter } from "@/components/storefront/SiteFooter";
 import { getFooterProps } from "@/lib/footer";
@@ -20,7 +23,17 @@ async function getPrint(slug: string) {
 
 export default async function PrintPage({ params }: { params: { slug: string } }) {
   const print = await getPrint(params.slug);
-  if (!print || !print.published) notFound();
+  if (!print) notFound();
+  if (!print.published) {
+    // Unpublished usually means sold out / taken off the shop — but a past
+    // buyer's "My Collection" link (src/app/account/page.tsx) should never
+    // lead to a dead page, so let someone who actually owns a paid copy
+    // keep viewing it.
+    const session = await getServerSession(authOptions);
+    const customerSession = session?.user && (session.user as any).role === "CUSTOMER" ? session.user : null;
+    const owns = customerSession ? await customerOwnsPrint((customerSession as any).id, print.id) : false;
+    if (!owns) notFound();
+  }
 
   // A reservation that's simply timed out shouldn't still count as "taken"
   // the next time someone loads this page — see src/lib/edition-reservations.ts.
