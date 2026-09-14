@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { customerOwnsPrint } from "@/lib/customer-collection";
+import { customerOwnsPrint, getCustomerPiecesForPrint } from "@/lib/customer-collection";
 import { SiteHeader } from "@/components/storefront/SiteHeader";
 import { SiteFooter } from "@/components/storefront/SiteFooter";
 import { getFooterProps } from "@/lib/footer";
@@ -21,19 +22,34 @@ async function getPrint(slug: string) {
   return prisma.print.findUnique({ where: { slug } });
 }
 
-export default async function PrintPage({ params }: { params: { slug: string } }) {
+export default async function PrintPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { view?: string };
+}) {
   const print = await getPrint(params.slug);
   if (!print) notFound();
-  if (!print.published) {
-    // Unpublished usually means sold out / taken off the shop — but a past
-    // buyer's "My Collection" link (src/app/account/page.tsx) should never
-    // lead to a dead page, so let someone who actually owns a paid copy
-    // keep viewing it.
-    const session = await getServerSession(authOptions);
-    const customerSession = session?.user && (session.user as any).role === "CUSTOMER" ? session.user : null;
-    const owns = customerSession ? await customerOwnsPrint((customerSession as any).id, print.id) : false;
-    if (!owns) notFound();
-  }
+
+  // Checked once up front — used both to let a past buyer keep viewing an
+  // unpublished print, and to decide whether to show the "My Collection"
+  // read-only view below (see viewingOwnedOnly).
+  const session = await getServerSession(authOptions);
+  const customerSession = session?.user && (session.user as any).role === "CUSTOMER" ? session.user : null;
+  const owns = customerSession ? await customerOwnsPrint((customerSession as any).id, print.id) : false;
+
+  if (!print.published && !owns) notFound();
+
+  // The "My Collection" carousel (src/components/account/CollectionCarousel.tsx)
+  // links here with ?view=owned so a customer looking at a print they've
+  // already bought sees their copy, not a purchase form for it — "clickable
+  // through, but no purchasing" per how that gallery is meant to work.
+  // Only honoured when they actually own it, regardless of the query param.
+  const viewingOwnedOnly = searchParams?.view === "owned" && owns;
+  const ownedPieces = viewingOwnedOnly
+    ? await getCustomerPiecesForPrint((customerSession as any).id, print.id)
+    : [];
 
   // A reservation that's simply timed out shouldn't still count as "taken"
   // the next time someone loads this page — see src/lib/edition-reservations.ts.
@@ -110,17 +126,36 @@ export default async function PrintPage({ params }: { params: { slug: string } }
             )}
           </dl>
 
-          <AddToCartForm
-            printId={print.id}
-            slug={print.slug}
-            title={print.title}
-            priceMinor={print.priceMinor}
-            currency={print.currency}
-            imageUrl={print.primaryImageUrl ?? undefined}
-            availableNumbers={availableNumbers}
-            editionSize={print.editionSize}
-            pickerNote={settings.editionPickerNote}
-          />
+          {viewingOwnedOnly ? (
+            <div className="border hairline p-5">
+              <p className="label-caps mb-3">In your collection</p>
+              {ownedPieces.map((piece) => (
+                <p key={piece.orderItemId} className="text-sm text-stone mb-1">
+                  {piece.editionNumber != null
+                    ? `Edition #${piece.editionNumber}${piece.editionSize ? ` / ${piece.editionSize}` : ""}`
+                    : "Open edition"}{" "}
+                  — order {piece.orderNumber}
+                </p>
+              ))}
+              {print.published && (
+                <Link href={`/prints/${print.slug}`} className="btn-secondary inline-block mt-4">
+                  View in shop
+                </Link>
+              )}
+            </div>
+          ) : (
+            <AddToCartForm
+              printId={print.id}
+              slug={print.slug}
+              title={print.title}
+              priceMinor={print.priceMinor}
+              currency={print.currency}
+              imageUrl={print.primaryImageUrl ?? undefined}
+              availableNumbers={availableNumbers}
+              editionSize={print.editionSize}
+              pickerNote={settings.editionPickerNote}
+            />
+          )}
         </div>
       </section>
 

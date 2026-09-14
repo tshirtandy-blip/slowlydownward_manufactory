@@ -35,7 +35,7 @@ export function CollectionCarousel({ pieces }: { pieces: CollectionPiece[] }) {
         {pieces.map((piece) => (
           <Link
             key={piece.orderItemId}
-            href={`/prints/${piece.printSlug}`}
+            href={`/prints/${piece.printSlug}?view=owned`}
             data-card
             className="group shrink-0 w-64 snap-start"
           >

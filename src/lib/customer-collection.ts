@@ -52,6 +52,14 @@ export async function getCustomerCollection(customerId: string): Promise<Collect
   }));
 }
 
+/** Every paid copy this customer owns of one specific print — used by the
+ * print page (src/app/prints/[slug]/page.tsx) to list which edition
+ * number(s) they hold when viewing it via "My Collection". */
+export async function getCustomerPiecesForPrint(customerId: string, printId: string): Promise<CollectionPiece[]> {
+  const all = await getCustomerCollection(customerId);
+  return all.filter((piece) => piece.printId === printId);
+}
+
 /** Whether this customer owns at least one paid copy of this print — used
  * by the print detail page (src/app/prints/[slug]/page.tsx) to let past
  * buyers keep viewing a print even after it's been unpublished (e.g. a
