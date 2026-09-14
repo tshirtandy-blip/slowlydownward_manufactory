@@ -10,7 +10,9 @@ const NAV: { href: string; label: string; section: string }[] = [
   { href: "/admin/dashboard", label: "Dashboard", section: "dashboard" },
   { href: "/admin/orders", label: "Orders", section: "orders" },
   { href: "/admin/pack", label: "Packing queue", section: "pack" },
-  { href: "/admin/stock", label: "Stock", section: "stock" },
+  { href: "/admin/products", label: "Product", section: "products" },
+  { href: "/admin/reports", label: "Reports", section: "reports" },
+  { href: "/admin/pages", label: "Pages", section: "pages" },
   { href: "/admin/settings", label: "Settings", section: "settings" },
 ];
 

@@ -60,7 +60,7 @@ export default async function UsersPage() {
         <select name="role" required className="border hairline bg-transparent px-3 py-2 text-sm w-full">
           <option value="ADMIN">Admin — full access</option>
           <option value="SALES">Sales — orders &amp; reporting</option>
-          <option value="STOCK">Stock — prints &amp; editions</option>
+          <option value="STOCK">Stock — products &amp; editions</option>
           <option value="PACKER">Packer — packing queue only</option>
         </select>
         <button className="btn-primary">Create account</button>

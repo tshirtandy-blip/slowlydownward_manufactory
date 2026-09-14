@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/storefront/SiteHeader";
 import { SiteFooter } from "@/components/storefront/SiteFooter";
+import { getFooterProps } from "@/lib/footer";
 
-export default function CheckoutCancelPage() {
+export default async function CheckoutCancelPage() {
+  const footer = await getFooterProps();
+
   return (
     <>
       <SiteHeader />
@@ -13,7 +16,7 @@ export default function CheckoutCancelPage() {
           Back to cart
         </Link>
       </section>
-      <SiteFooter />
+      <SiteFooter {...footer} />
     </>
   );
 }

@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatMinor } from "@/lib/money";
+import { CourierStatusEditor } from "@/components/admin/CourierStatusEditor";
+import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { ManualOrderPanel } from "@/components/admin/ManualOrderPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -9,22 +12,53 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     where: { id: params.id },
     include: {
       customer: true,
-      items: { include: { print: true, edition: { include: { location: true } } } },
+      items: { include: { print: true, edition: true } },
       packedBy: true,
+      createdBy: true,
     },
   });
   if (!order) notFound();
 
   const address = order.shippingAddress as any;
 
+  // If any item's requested edition number couldn't be honoured, the
+  // webhook records exactly why (see src/lib/editions.ts / the stripe
+  // webhook route) — pull those up so the reason shows right here instead
+  // of just "requested #X" with no explanation of what happened to it.
+  const mismatchLogs = await prisma.auditLog.findMany({
+    where: { entityType: "Order", entityId: order.id, action: "requested_edition_unavailable" },
+  });
+  const mismatchReasonByItemId = new Map<string, string>();
+  for (const log of mismatchLogs) {
+    const meta = log.meta as any;
+    if (meta?.orderItemId && meta?.reason) mismatchReasonByItemId.set(meta.orderItemId, meta.reason);
+  }
+
   return (
     <div className="max-w-3xl">
-      <div className="flex items-baseline justify-between mb-8">
+      <AutoRefresh />
+      <div className="flex items-baseline justify-between mb-2">
         <h1 className="font-display text-2xl">{order.orderNumber}</h1>
         <span className="label-caps">{order.status.replace("_", " ")}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+      {order.source === "MANUAL" && (
+        <p className="text-xs text-stone mb-6">
+          Manual order{order.createdBy ? ` — created by ${order.createdBy.name}` : ""}, not from the storefront.
+        </p>
+      )}
+
+      {order.source === "MANUAL" && (
+        <ManualOrderPanel
+          orderId={order.id}
+          initialPaymentLinkUrl={order.paymentLinkUrl}
+          initialPaymentLinkSentAt={order.paymentLinkSentAt ? order.paymentLinkSentAt.toISOString() : null}
+          customerEmail={order.customer.email}
+          canCancel={order.status === "PENDING_PAYMENT"}
+        />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8 text-sm">
         <div>
           <h2 className="label-caps mb-2">Customer</h2>
           <p>{order.customer.email}</p>
@@ -46,6 +80,29 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               Tracking: {order.trackingNumber} ({order.shippingCarrier})
             </p>
           )}
+          {address && (
+            <a
+              href={`/admin/orders/${order.id}/commercial-invoice`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs underline hover:text-ink mt-2 inline-block"
+            >
+              View commercial invoice (PDF)
+            </a>
+          )}
+        </div>
+        <div>
+          <h2 className="label-caps mb-2">Courier status</h2>
+          <CourierStatusEditor
+            orderId={order.id}
+            initialStatus={order.courierStatus}
+            hasTrackingNumber={!!order.trackingNumber}
+          />
+          {order.courierStatusAt && (
+            <p className="text-xs text-stone mt-1">
+              Updated {order.courierStatusAt.toLocaleString("en-GB")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -65,9 +122,30 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               <tr key={item.id} className="border-b hairline last:border-0">
                 <td className="p-3">{item.print.title}</td>
                 <td className="p-3">
-                  {item.edition ? `#${item.edition.number} / ${item.print.editionSize}` : "Not yet assigned"}
+                  {item.edition
+                    ? `#${item.edition.number} / ${item.print.editionSize}`
+                    : item.print.editionSize === null
+                    ? "Open edition"
+                    : item.requestedEditionNumber != null && order.status === "PENDING_PAYMENT"
+                    ? `#${item.requestedEditionNumber} / ${item.print.editionSize} — held, awaiting payment`
+                    : "Not yet assigned"}
+                  {/* Only shown when it actually differs from what was assigned —
+                      e.g. the customer's chosen number was taken by the time
+                      payment completed, so the next available one was used
+                      instead (see allocateEdition in src/lib/editions.ts). */}
+                  {item.requestedEditionNumber != null &&
+                    item.edition?.number !== item.requestedEditionNumber && (
+                      <>
+                        <p className="text-xs text-accent mt-1">
+                          Customer requested #{item.requestedEditionNumber}
+                        </p>
+                        {mismatchReasonByItemId.has(item.id) && (
+                          <p className="text-xs text-stone mt-0.5">{mismatchReasonByItemId.get(item.id)}</p>
+                        )}
+                      </>
+                    )}
                 </td>
-                <td className="p-3">{item.edition?.location?.code ?? "—"}</td>
+                <td className="p-3">{item.print.drawerLocation ?? "—"}</td>
                 <td className="p-3">{formatMinor(item.unitPriceMinor, order.currency)}</td>
               </tr>
             ))}

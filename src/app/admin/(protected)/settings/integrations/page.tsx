@@ -3,6 +3,7 @@ import { upsConfigured } from "@/lib/integrations/ups";
 import { royalMailConfigured } from "@/lib/integrations/royalmail";
 import { mailchimpConfigured } from "@/lib/integrations/mailchimp";
 import { xeroConfigured } from "@/lib/integrations/xero";
+import { emailConfigured } from "@/lib/integrations/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,16 @@ export default async function IntegrationsPage() {
           <p className="text-sm text-stone">UK shipping labels, created when an order is packed.</p>
         </div>
         <StatusPill ok={royalMailConfigured()} />
+      </div>
+
+      <div className="border hairline p-5 flex items-center justify-between">
+        <div>
+          <h2 className="font-display">Resend (email)</h2>
+          <p className="text-sm text-stone">
+            Sends the payment-link email for a manual order (Admin &gt; Orders &gt; New manual order).
+          </p>
+        </div>
+        <StatusPill ok={emailConfigured()} />
       </div>
 
       <div className="border hairline p-5 flex items-center justify-between">

@@ -47,14 +47,48 @@ export async function POST(req: Request) {
       await prisma.$transaction(async (tx) => {
         const order = await tx.order.findUniqueOrThrow({
           where: { id: orderId },
-          include: { items: true },
+          include: { items: { include: { print: true } } },
         });
 
         if (order.status !== "PENDING_PAYMENT") return; // already processed (webhook retried)
 
         for (const item of order.items) {
-          const edition = await allocateEdition(tx, item.printId, item.requestedEditionNumber);
+          // Open editions (Print.editionSize === null) aren't limited or
+          // numbered, so there are no Edition rows to allocate — this item
+          // is fulfilled with no specific copy assigned, on purpose, rather
+          // than treated as a fulfillment failure.
+          if (item.print.editionSize === null) continue;
+          const { edition, mismatch } = await allocateEdition(
+            tx,
+            item.printId,
+            item.requestedEditionNumber,
+            item.reservationToken
+          );
           await tx.orderItem.update({ where: { id: item.id }, data: { editionId: edition.id } });
+
+          // The customer's requested number couldn't be honoured — record
+          // exactly why, right on the order, so a future "I got the wrong
+          // number" report can be looked into with hard evidence instead of
+          // reconstructing it after the fact from a screenshot.
+          if (mismatch) {
+            await tx.auditLog.create({
+              data: {
+                action: "requested_edition_unavailable",
+                entityType: "Order",
+                entityId: orderId,
+                meta: {
+                  orderItemId: item.id,
+                  printId: item.printId,
+                  requestedNumber: item.requestedEditionNumber,
+                  assignedNumber: edition.number,
+                  reason: mismatch.reason,
+                  editionStatusAtCheckTime: mismatch.editionStatus,
+                  heldByToken: mismatch.heldByToken,
+                  thisOrdersToken: item.reservationToken,
+                },
+              },
+            });
+          }
         }
 
         await tx.order.update({

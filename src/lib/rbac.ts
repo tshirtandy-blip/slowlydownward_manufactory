@@ -9,8 +9,10 @@ export const SECTION_ACCESS: Record<string, Role[]> = {
   orders: ["ADMIN", "SALES"],
   customers: ["ADMIN", "SALES"],
   pack: ["ADMIN", "PACKER"],
-  stock: ["ADMIN", "STOCK"],
+  products: ["ADMIN", "STOCK"],
+  reports: ["ADMIN", "SALES"],
   settings: ["ADMIN"],
+  pages: ["ADMIN"],
 };
 
 export function canAccess(role: Role | undefined, section: keyof typeof SECTION_ACCESS): boolean {
@@ -27,7 +29,7 @@ export function defaultRouteForRole(role: Role): string {
     case "SALES":
       return "/admin/orders";
     case "STOCK":
-      return "/admin/stock";
+      return "/admin/products";
     case "PACKER":
       return "/admin/pack";
     default:

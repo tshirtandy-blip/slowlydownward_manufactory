@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { startOfDay, startOfWeek, subDays, format } from "date-fns";
 
-const PAID_STATUSES = ["PAID", "PACKING", "PACKED", "SHIPPED"] as const;
+export const PAID_STATUSES = ["PAID", "PACKING", "PACKED", "SHIPPED"] as const;
 
 export async function getKpis() {
   const today = startOfDay(new Date());

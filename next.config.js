@@ -10,6 +10,19 @@ const nextConfig = {
     // ESLint from blocking `next build` in fresh checkouts.
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // Every admin/storefront page that reads from the database is already
+    // marked `dynamic = "force-dynamic"`, so the SERVER always re-fetches
+    // it fresh — but by default Next.js still caches a page's result in
+    // the BROWSER for up to 30 seconds after visiting it, and reuses that
+    // stale copy on a client-side navigation (clicking a link) rather than
+    // asking the server again. That's what made a brand new order not show
+    // up in Admin > Orders until a manual page reload — reloading bypasses
+    // this cache, clicking around the admin didn't. Setting this to 0
+    // disables that client-side cache entirely, so every click always
+    // shows what's actually in the database right now.
+    staleTimes: { dynamic: 0 },
+  },
 };
 
 module.exports = nextConfig;

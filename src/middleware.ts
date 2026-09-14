@@ -15,7 +15,7 @@ export default withAuth(
     if (!section || section === "login") return NextResponse.next();
 
     const role = token?.role as any;
-    if (["dashboard", "orders", "customers", "pack", "stock", "settings"].includes(section)) {
+    if (["dashboard", "orders", "customers", "pack", "products", "reports", "settings", "pages"].includes(section)) {
       if (!canAccess(role, section as any)) {
         return NextResponse.redirect(new URL("/admin", req.url));
       }

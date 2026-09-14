@@ -1,61 +1,39 @@
 import { prisma } from "@/lib/prisma";
+import { parseBlocks, type Block } from "@/lib/blocks";
 import { SiteHeader } from "@/components/storefront/SiteHeader";
 import { SiteFooter } from "@/components/storefront/SiteFooter";
-import { PrintCard } from "@/components/storefront/PrintCard";
+import { getFooterProps } from "@/lib/footer";
+import { BlockRenderer } from "@/components/storefront/BlockRenderer";
 
 export const dynamic = "force-dynamic";
 
-async function getPrints() {
-  const prints = await prisma.print.findMany({
-    where: { published: true },
-    include: { editions: { where: { status: "AVAILABLE" }, select: { id: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-  return prints;
+// Used only if no "home" Page row exists yet (e.g. before the first
+// `npm run seed`, or on an install that predates the page builder) — the
+// home page should never come up blank.
+function fallbackHomeBlocks(): Block[] {
+  return [
+    {
+      id: "fallback-hero",
+      type: "hero",
+      eyebrow: "Stanley Donwood — Limited Editions",
+      heading: "Prints made slowly, released rarely, gone for good.",
+      subheading:
+        "Every print is hand-numbered from a strictly limited edition. When the edition sells out, it is not reprinted.",
+    },
+    { id: "fallback-grid", type: "printGrid", mode: "all" },
+  ];
 }
 
 export default async function HomePage() {
-  const prints = await getPrints();
+  const homePage = await prisma.page.findUnique({ where: { slug: "home" } });
+  const blocks = homePage ? parseBlocks(homePage.blocks) : [];
+  const footer = await getFooterProps();
 
   return (
     <>
       <SiteHeader />
-
-      <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
-        <p className="label-caps mb-6">Stanley Donwood — Limited Editions</p>
-        <h1 className="font-display text-4xl md:text-6xl leading-tight max-w-3xl mx-auto">
-          Prints made slowly, released rarely, gone for good.
-        </h1>
-        <p className="mt-6 text-stone max-w-xl mx-auto">
-          Every print is hand-numbered from a strictly limited edition. When
-          the edition sells out, it is not reprinted.
-        </p>
-      </section>
-
-      <section id="prints" className="mx-auto max-w-6xl px-6 pb-24">
-        {prints.length === 0 ? (
-          <p className="text-center text-stone py-24">
-            No prints are currently listed. Check back soon.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
-            {prints.map((print) => (
-              <PrintCard
-                key={print.id}
-                slug={print.slug}
-                title={print.title}
-                priceMinor={print.priceMinor}
-                currency={print.currency}
-                imageUrl={print.primaryImageUrl}
-                availableCount={print.editions.length}
-                editionSize={print.editionSize}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <SiteFooter />
+      <BlockRenderer blocks={blocks.length > 0 ? blocks : fallbackHomeBlocks()} />
+      <SiteFooter {...footer} />
     </>
   );
 }

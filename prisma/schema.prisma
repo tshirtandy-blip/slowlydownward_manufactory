@@ -43,6 +43,17 @@ enum OrderStatus {
   REFUNDED
 }
 
+// Where an order came from — the storefront cart (the normal case) or
+// created by hand in Admin > Orders > New manual order (for archive/current
+// prints being sold off-site, not published for anyone to buy directly).
+// Everything downstream (payment, the packing queue, fulfilment) is
+// identical either way; this only changes how it's created and what shows
+// on the order itself.
+enum OrderSource {
+  STOREFRONT
+  MANUAL
+}
+
 enum ShippingCarrier {
   ROYAL_MAIL
   UPS
@@ -58,6 +69,68 @@ enum IntegrationProvider {
   XERO
 }
 
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum LogoType {
+  TEXT
+  IMAGE
+  NONE
+}
+
+enum HeaderAlign {
+  LEFT
+  CENTER
+  RIGHT
+}
+
+// Singleton row (always fetched/created with a fixed id — see
+// src/lib/site-settings.ts) controlling the storefront header: logo,
+// its position, and which icons show.
+model SiteSettings {
+  id                   String      @id @default(cuid())
+  logoType             LogoType    @default(TEXT)
+  logoText             String?     @default("Slowly Downward")
+  logoImageUrl         String?
+  logoPosition         HeaderAlign @default(LEFT)
+  // Percentage size of the logo relative to its normal display size — e.g.
+  // 100 = normal, 150 = 50% bigger. Adjusted via +/- buttons in Admin >
+  // Settings > Header & branding.
+  logoScale            Int         @default(100)
+  showCartIcon         Boolean     @default(true)
+  cartIconUrl          String?
+  showAccountIcon      Boolean     @default(true)
+  accountIconUrl       String?
+  showCurrencySelector Boolean     @default(true)
+  // Keys into the curated list in src/lib/fonts.ts — which typeface is used
+  // for headings/titles vs. body text across the storefront.
+  headingFont          String      @default("serif-times")
+  bodyFont             String      @default("sans-helvetica")
+
+  // Site footer — see src/components/storefront/SiteFooter.tsx and
+  // Admin > Settings > Footer. The third column's list of links lives in
+  // its own table (FooterLink) since it's a variable-length list, not a
+  // single value.
+  footerColumn1Heading String  @default("The Archive")
+  footerColumn1Body    String  @default("Limited edition prints by Stanley Donwood. Each work is numbered, catalogued, and released in strictly limited quantities. Once an edition is gone, it is gone.")
+  footerColumn2Heading String  @default("Excuse Me")
+  footerColumn2Body    String  @default("Sign up to hear about new releases before they go public.")
+  footerLinksHeading   String  @default("Information")
+  footerCopyrightName  String  @default("Slowly Downward")
+  footerBadgeText      String  @default("Stripe secure checkout")
+
+  // How long a customer's chosen edition number is held for them (Edition
+  // moves to RESERVED — see below) once it's added to their cart, and the
+  // text shown next to the edition-number picker on a print's page — both
+  // editable from Admin > Settings > Editions.
+  editionReservationMinutes Int    @default(5)
+  editionPickerNote         String @default("Choosing a number holds it for you for a short time — complete checkout before it runs out, or it's released back to general availability.")
+
+  updatedAt            DateTime    @updatedAt
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -67,8 +140,9 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  packedOrders Order[]     @relation("PackedBy")
-  auditLogs    AuditLog[]
+  packedOrders  Order[]     @relation("PackedBy")
+  createdOrders Order[]     @relation("CreatedOrders")
+  auditLogs     AuditLog[]
 }
 
 model Customer {
@@ -80,6 +154,10 @@ model Customer {
   marketingOptIn Boolean  @default(false)
   mailchimpId    String?
   xeroContactId  String?
+  // Null for a customer who has only ever checked out as a guest — set the
+  // first time they register/create a password, at which point they can
+  // sign in and this same record (and its order history) becomes theirs.
+  passwordHash   String?
   createdAt      DateTime @default(now())
 
   orders Order[]
@@ -113,15 +191,153 @@ model Print {
   currency         String   @default("GBP")
   primaryImageUrl  String?
   imageUrls        Json?    // string[] of additional images
-  editionSize      Int
+  paperSize        String?  // e.g. "A2 (420 x 594mm)" — the sheet the print is on
+  imageSize        String?  // e.g. "300 x 400mm" — the printed image area itself
+  medium           String?  // e.g. "Screenprint" — chosen from Admin > Settings > Product mediums
+  // Null means an "open" edition — not limited or numbered (e.g. a mug or
+  // book printed on demand). No individual Edition rows exist for one, and
+  // no edition numbers or remaining-count text are ever shown for it.
+  editionSize      Int?
   published        Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  // All copies of one edition are stored together, so there's a single
+  // drawer/location for the whole print rather than one per copy — set from
+  // its Stock details page. (The older per-edition StockLocation below is
+  // kept for backward compatibility but is no longer used by the admin UI.)
+  drawerLocation String?
+
+  // Shipping & customs — weight/dimensions are for ONE packaged copy of this
+  // print, used for live UPS rate quotes on the Packing tab (Admin >
+  // Packing). Customs fields are used to build the commercial invoice
+  // required for shipments outside the UK (Europe + rest of world) — see
+  // src/lib/commercial-invoice.ts. All optional: unset values fall back to
+  // conservative defaults so packing still works before these are filled in,
+  // but international customs paperwork will be generic until they are.
+  weightGrams        Int?    // packaged weight, in grams
+  lengthCm           Float?
+  widthCm            Float?
+  heightCm           Float?
+  // Declared customs value for ONE unit, in pence — usually the same as
+  // priceMinor, kept separate in case customs value should ever differ.
+  customsValueMinor  Int?
+  customsDescription String? // plain-language goods description, e.g. "Framed art print"
+  customsCode        String? // HS / commodity tariff code, e.g. "9701.10"
+
+  // Free-form content blocks shown on this print's product page, in addition
+  // to the fixed image/price/buy box — same block shapes as Page.blocks
+  // (see src/lib/blocks.ts). Null/empty means no extra content.
+  contentBlocks Json?
 
   editions  Edition[]
   orderItems OrderItem[]
 }
 
+// Manageable list of options offered in the product editor's "Medium"
+// dropdown (Admin > Settings > Product mediums) — e.g. "Screenprint",
+// "Giclée", "Mug", "Book". Print.medium just stores the chosen text, so this
+// list exists purely to keep data entry consistent, not as a strict foreign key.
+model MediumOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// A storefront page built from content blocks in the admin "Pages" editor.
+// The row with slug "home" always exists (created by the seed script) and
+// drives the site's home page; every other row is a standalone page served
+// at /<slug>.
+model Page {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  status         PageStatus @default(DRAFT)
+  // Array of content blocks — see src/lib/blocks.ts for the shapes this can
+  // hold and the zod schema used to validate it on save.
+  blocks         Json       @default("[]")
+  seoDescription String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  footerLinks FooterLink[]
+}
+
+// One link in the footer's "Information" column — a display label plus the
+// page it opens. Deleting the underlying Page removes its footer link too
+// (a link to nothing would just be a dead end), but removing the footer
+// link itself never deletes the page — it just stops linking to it, in case
+// it's wanted back later. Managed from Admin > Settings > Footer.
+model FooterLink {
+  id        String   @id @default(cuid())
+  label     String
+  pageId    String   @unique // one footer link per page, so there's an unambiguous row to upsert against
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+// Editable shipping cost + coverage for one of the three fixed regions
+// (UK / Europe / Rest of world) offered at checkout — see
+// src/lib/shipping.ts. Always exactly one row per key; managed from
+// Admin > Settings > Shipping.
+model ShippingZone {
+  id           String   @id @default(cuid())
+  key          String   @unique // "UK" | "EUROPE" | "ROW" — fixed, not user-editable
+  label        String   // customer-facing name, e.g. "United Kingdom", "Europe"
+  priceMinor   Int      // shipping charge in pence, charged in GBP
+  countryCodes Json     // string[] of ISO 3166-1 alpha-2 codes assigned to this zone
+  sortOrder    Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+// One row of your Royal Mail contract's own price list — Royal Mail (unlike
+// UPS) doesn't offer a live "shop for a rate" API, since your cost is fixed
+// by contract to a published price per destination, package size, and
+// weight band, not quoted per-shipment. Set this up once — typed in, or
+// bulk-imported from a CSV export of your own price sheet — and the packing
+// tab looks up the matching row by the order's real destination country,
+// weight, and dimensions. See src/lib/royal-mail-rates.ts. Managed from
+// Admin > Settings > Shipping.
+model RoyalMailRate {
+  id       String  @id @default(cuid())
+  service  String  // e.g. "International Tracked", "Tracked 48"
+  // ISO 3166-1 alpha-2 code this row applies to, e.g. "FR" — null means a
+  // catch-all row (e.g. a general "Rest of world" rate) used only when no
+  // row matches the destination country exactly.
+  countryCode String?
+  // This row applies to any parcel at or under these limits. Weight is
+  // required; dimensions are optional — leave a dimension null to not
+  // check it at all (e.g. for a price list that only varies by weight).
+  maxWeightGrams Int
+  maxLengthCm    Float?
+  maxWidthCm     Float?
+  maxHeightCm    Float?
+  priceMinor     Int
+  sortOrder      Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@index([countryCode])
+}
+
+// A brand typeface the store owner has uploaded (something they actually
+// own the rights to use on a website) — an alternative to the built-in
+// system font stacks in src/lib/fonts.ts. Selectable from the same
+// Typography dropdowns as those, via the key "custom-<id>". Managed from
+// Admin > Settings > Typography > Custom fonts.
+model CustomFont {
+  id        String   @id @default(cuid())
+  label     String // shown in the Typography dropdowns, e.g. "Brand Display"
+  fileUrl   String // the uploaded .woff2/.woff/.ttf/.otf file
+  format    String // "woff2" | "woff" | "truetype" | "opentype" — the CSS @font-face format() hint
+  fallback  String   @default("sans-serif") // generic CSS fallback family while it loads, or if it fails
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Superseded by Print.drawerLocation (one drawer per print, not per copy) —
+// kept only so existing data isn't dropped. Not used by the current admin UI.
 model StockLocation {
   id          String   @id @default(cuid())
   code        String   @unique // e.g. "C3-D5" (Cabinet 3, Drawer 5)
@@ -141,6 +357,17 @@ model Edition {
   location   StockLocation? @relation(fields: [locationId], references: [id])
   notes      String?
   soldAt     DateTime?
+  // Set together whenever a customer picks this exact number and adds it to
+  // their cart (status becomes RESERVED) — see src/lib/edition-reservations.ts.
+  // reservationToken identifies which browser holds the hold (no accounts or
+  // sessions involved at this point in the flow) so only they can renew or
+  // release it; reservedUntil is when it lapses and becomes available to
+  // everyone again if they haven't checked out by then. Nothing runs on a
+  // timer to enforce this — it's swept lazily wherever it matters (viewing
+  // the print page, trying to reserve, checking out, allocating at payment).
+  reservedAt       DateTime?
+  reservedUntil    DateTime?
+  reservationToken String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -148,6 +375,7 @@ model Edition {
 
   @@unique([printId, number])
   @@index([status])
+  @@index([reservedUntil])
 }
 
 model Order {
@@ -156,9 +384,21 @@ model Order {
   customerId        String
   customer          Customer    @relation(fields: [customerId], references: [id])
   status            OrderStatus @default(PENDING_PAYMENT)
+  source            OrderSource @default(STOREFRONT)
+  // Set only for a MANUAL order — who created it (Admin > Orders > New
+  // manual order), for a "created by" note on the order itself.
+  createdByUserId   String?
+  createdBy         User?       @relation("CreatedOrders", fields: [createdByUserId], references: [id])
 
   stripeSessionId       String?  @unique
   stripePaymentIntentId String?  @unique
+  // The Stripe Checkout URL from the most recent session created for this
+  // order — kept around so a manual order's payment link can be shown/
+  // copied again later without regenerating it, and so "regenerate" has
+  // something to replace. Stripe Checkout links stop working on their own
+  // after a while (~24h) or once used, whichever comes first.
+  paymentLinkUrl    String?
+  paymentLinkSentAt DateTime?
 
   subtotalMinor Int
   shippingMinor Int      @default(0)
@@ -168,11 +408,25 @@ model Order {
   shippingName    String?
   shippingAddress Json?
   billingAddress  Json?
+  // ISO 3166-1 alpha-2 country the shipping price (shippingMinor) was
+  // actually quoted for — Stripe's own address form is locked to just this
+  // country, same reasoning as the storefront checkout (src/app/api/
+  // checkout/route.ts). Needed here (unlike there) because a manual
+  // order's payment link can be regenerated later, and the restriction has
+  // to be re-applied each time rather than only once at creation.
+  shippingCountry String?
 
   shippingCarrier ShippingCarrier @default(UNASSIGNED)
   trackingNumber  String?
   labelUrl        String?
   shippedAt       DateTime?
+  // Free-text delivery status — "Label created", "Collected", "In transit",
+  // "Delivered", or whatever a carrier actually calls it. Set manually by
+  // staff for now (see the order detail page); a "Refresh from carrier"
+  // action fills it in automatically from the UPS/Royal Mail tracking APIs
+  // once tracking credentials are configured.
+  courierStatus   String?
+  courierStatusAt DateTime?
 
   packedByUserId String?
   packedBy       User?   @relation("PackedBy", fields: [packedByUserId], references: [id])
@@ -201,9 +455,45 @@ model OrderItem {
   editionId              String? @unique
   edition                Edition? @relation(fields: [editionId], references: [id])
   requestedEditionNumber Int?
+  // The reservation this order was actually given at checkout for
+  // requestedEditionNumber (see src/lib/edition-reservations.ts) — carried
+  // through so allocateEdition, at payment time, only ever hands over a
+  // still-reserved number if it's honouring THIS order's own hold, never
+  // someone else's still-active one for the same number.
+  reservationToken       String?
   unitPriceMinor         Int
 
   createdAt DateTime @default(now())
+}
+
+// One row per anonymous site visitor (a random id generated in the
+// browser and kept in localStorage — no cookies, no personal data). A
+// small heartbeat beacon (src/components/VisitorTracker.tsx) upserts this
+// every ~45s while someone has the storefront open, which is what powers
+// the "visitors right now / 24h / this week" and "active baskets" widgets
+// on the dashboard — see src/lib/analytics.ts. Rows for visitors who
+// haven't been seen in a long time are harmless, just excluded by every
+// query's recency filter; nothing currently prunes old rows.
+model Visitor {
+  id            String   @id
+  cartItemCount Int      @default(0)
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @updatedAt
+
+  @@index([lastSeenAt])
+}
+
+// A report configuration an admin has chosen to keep — see
+// src/lib/report-types.ts for what `type` and `params` can hold. Re-running
+// a saved report always queries fresh data; nothing about the results
+// themselves is stored here, only how to produce them again.
+model SavedReport {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  params    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model IntegrationSetting {

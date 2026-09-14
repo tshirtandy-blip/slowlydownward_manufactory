@@ -1,24 +1,32 @@
-import { getKpis, getRevenueSeries, getTopPrints, getStockBreakdown } from "@/lib/reports";
+import { getKpis, getRevenueSeries, getTopPrints } from "@/lib/reports";
+import { getLiveActivity } from "@/lib/analytics";
 import { formatMinor } from "@/lib/money";
 import { StatTile } from "@/components/admin/StatTile";
-import { RevenueChart, TopPrintsChart, StockBreakdownBar } from "@/components/admin/DashboardCharts";
+import { LiveStatsWidgets } from "@/components/admin/LiveStatsWidgets";
+import { RevenueChart, TopPrintsChart } from "@/components/admin/DashboardCharts";
+import { AutoRefresh } from "@/components/admin/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const [kpis, revenue, topPrints, stock] = await Promise.all([
+  const [kpis, revenue, topPrints, liveActivity] = await Promise.all([
     getKpis(),
     getRevenueSeries(14),
     getTopPrints(5),
-    getStockBreakdown(),
+    getLiveActivity(),
   ]);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <AutoRefresh intervalMs={20_000} />
+      <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl">Live stats</h1>
-        <p className="text-xs text-stone">Updates on every page load</p>
+        <p className="text-xs text-stone">Updating automatically</p>
+      </div>
+
+      <div className="mb-10">
+        <LiveStatsWidgets initial={liveActivity} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -32,7 +40,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="border hairline p-6">
           <h2 className="label-caps mb-4">Revenue — last 14 days</h2>
           <RevenueChart data={revenue} />
@@ -45,15 +53,6 @@ export default async function DashboardPage() {
             <p className="text-stone text-sm py-16 text-center">No sales yet.</p>
           )}
         </div>
-      </div>
-
-      <div className="border hairline p-6 max-w-xl">
-        <h2 className="label-caps mb-4">Stock breakdown ({kpis.editionsAvailable} available)</h2>
-        {stock.length > 0 ? (
-          <StockBreakdownBar data={stock} />
-        ) : (
-          <p className="text-stone text-sm">No editions have been added yet.</p>
-        )}
       </div>
     </div>
   );

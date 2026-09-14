@@ -64,3 +64,26 @@ export async function createRoyalMailShipment(params: {
     carrier: "ROYAL_MAIL" as const,
   };
 }
+
+import type { TrackingEvent } from "./ups";
+
+/**
+ * Live tracking lookup via Royal Mail's tracking API. Returns Royal Mail's
+ * own current status text as-is, same reasoning as the UPS equivalent.
+ *
+ * NOTE: Royal Mail's tracking API is a separate product/subscription from
+ * Click & Drop shipping — confirm what's included on your account and the
+ * current endpoint/auth shape at developer.royalmail.net before going live.
+ */
+export async function getRoyalMailTracking(trackingNumber: string): Promise<TrackingEvent> {
+  const res = await fetch(`https://api.royalmail.net/mailpieces/v2/${encodeURIComponent(trackingNumber)}/events`, {
+    headers: {
+      "X-IBM-Client-Id": process.env.ROYAL_MAIL_CLIENT_ID ?? "",
+      "X-IBM-Client-Secret": process.env.ROYAL_MAIL_API_KEY ?? "",
+    },
+  });
+  if (!res.ok) throw new Error(`Royal Mail tracking lookup failed: ${await res.text()}`);
+  const data = await res.json();
+  const latest = data.mailPieces?.summary?.lastEventName ?? data.mailPieces?.events?.[0]?.eventName ?? "Unknown";
+  return { status: latest, description: latest, occurredAt: data.mailPieces?.summary?.lastEventDateTime };
+}

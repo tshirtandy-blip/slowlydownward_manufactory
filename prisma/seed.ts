@@ -69,9 +69,13 @@ async function main() {
     },
   ];
 
-  for (const p of printsData) {
+  for (const [idx, p] of printsData.entries()) {
     const existing = await prisma.print.findUnique({ where: { slug: p.slug } });
     if (existing) continue;
+
+    // All copies of one edition are stored in the same drawer, so this is a
+    // single field on the print rather than something to set per copy.
+    const drawerLocation = `C${idx + 1}-D1`;
 
     const print = await prisma.print.create({
       data: {
@@ -85,32 +89,119 @@ async function main() {
         description: p.description,
         published: true,
         collectionId: collection.id,
+        drawerLocation,
       },
     });
 
-    // Create editions, some pre-marked SOLD so the dashboard has something
-    // to show, some filed into demo stock locations.
-    for (let i = 1; i <= p.editionSize; i++) {
-      const sold = i <= p.soldCount;
-      const cabinet = Math.ceil(i / 40);
-      const drawer = Math.ceil((i % 40 || 40) / 8);
-      const code = `C${cabinet}-D${drawer}`;
-      const location = await prisma.stockLocation.upsert({
-        where: { code },
-        update: {},
-        create: { code },
-      });
-
-      await prisma.edition.create({
-        data: {
+    // One bulk insert for every copy, rather than one round trip per copy —
+    // this is what made seeding slow before, especially over a network
+    // connection to a hosted database.
+    await prisma.edition.createMany({
+      data: Array.from({ length: p.editionSize }).map((_, i) => {
+        const number = i + 1;
+        const sold = number <= p.soldCount;
+        return {
           printId: print.id,
-          number: i,
+          number,
           status: sold ? "SOLD" : "AVAILABLE",
           soldAt: sold ? new Date() : null,
-          locationId: sold ? undefined : location.id,
+        };
+      }),
+    });
+  }
+
+  console.log("Seeding storefront pages…");
+  await prisma.page.upsert({
+    where: { slug: "home" },
+    update: {},
+    create: {
+      slug: "home",
+      title: "Home",
+      status: "PUBLISHED",
+      blocks: [
+        {
+          id: "home-hero",
+          type: "hero",
+          eyebrow: "Stanley Donwood — Limited Editions",
+          heading: "Prints made slowly, released rarely, gone for good.",
+          subheading:
+            "Every print is hand-numbered from a strictly limited edition. When the edition sells out, it is not reprinted.",
         },
-      });
-    }
+        { id: "home-prints", type: "printGrid", mode: "all" },
+      ],
+    },
+  });
+
+  await prisma.page.upsert({
+    where: { slug: "about" },
+    update: {},
+    create: {
+      slug: "about",
+      title: "About",
+      status: "PUBLISHED",
+      blocks: [
+        {
+          id: "about-text",
+          type: "text",
+          body:
+            "Slowly Downward is a small studio press producing limited edition prints.\n\nEach design is worked by hand, printed in a single run, and never repeated. Once an edition is sold out, it stays that way — the plates and screens are retired, not reprinted.\n\nThis page, like every page on this site, is built and edited from Admin → Pages. Add, remove, and rearrange blocks there to change what visitors see here.",
+        },
+        {
+          id: "about-quote",
+          type: "quote",
+          text: "A print is a small, stubborn object. It refuses to be infinite.",
+        },
+      ],
+    },
+  });
+
+  // The three "Information" links in the site footer — created once here so
+  // they exist and are linkable immediately, then edited like any other
+  // page from Admin → Pages from then on. `update: {}` means re-running
+  // this seed never overwrites content you've already edited.
+  const footerPages = [
+    {
+      slug: "shipping-returns",
+      title: "Shipping & Returns",
+      label: "Shipping & returns",
+      body:
+        "Add your real shipping and returns policy here — Admin → Pages → Shipping & Returns.\n\nFor example: which countries you ship to, how long delivery takes, what happens if a print arrives damaged, and how returns or exchanges work.",
+    },
+    {
+      slug: "authenticity-care",
+      title: "Authenticity & Care",
+      label: "Authenticity & care",
+      body:
+        "Add your real authenticity and care information here — Admin → Pages → Authenticity & Care.\n\nFor example: how each print is numbered and catalogued, what a certificate of authenticity includes, and how to store or frame a print to keep it in good condition.",
+    },
+    {
+      slug: "contact",
+      title: "Contact",
+      label: "Contact",
+      body:
+        "Add your real contact details here — Admin → Pages → Contact.\n\nFor example: an email address, response times, and a postal address if you accept returns by post.",
+    },
+  ];
+  for (const [i, p] of footerPages.entries()) {
+    const page = await prisma.page.upsert({
+      where: { slug: p.slug },
+      update: {},
+      create: {
+        slug: p.slug,
+        title: p.title,
+        status: "PUBLISHED",
+        blocks: [{ id: `${p.slug}-text`, type: "text", body: p.body }],
+      },
+    });
+    // The footer's "Information" column reads from FooterLink, not just from
+    // the page existing — this is what actually puts a link to it in the
+    // footer (see Admin > Settings > Footer). `update: {}` again means a
+    // re-run won't undo a label edit or reordering you've made since.
+    await prisma.footerLink.upsert({
+      where: { pageId: page.id },
+      update: {},
+      create: { pageId: page.id, label: p.label, sortOrder: i },
+    });
   }
 
   console.log("Seed complete. Staff logins (password: password123):");

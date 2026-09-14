@@ -1,7 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
-import { formatMinor } from "@/lib/money";
 import { editionSummary } from "@/lib/editions";
+import { PriceTag } from "@/components/storefront/PriceTag";
 
 export function PrintCard({
   slug,
@@ -18,35 +17,33 @@ export function PrintCard({
   currency: string;
   imageUrl?: string | null;
   availableCount: number;
-  editionSize: number;
+  editionSize: number | null;
 }) {
-  const soldOut = availableCount === 0;
-
   return (
     <Link href={`/prints/${slug}`} className="group block">
-      <div className="relative aspect-[4/5] bg-white overflow-hidden border hairline">
+      <div className="relative overflow-hidden border hairline">
         {imageUrl ? (
-          <Image
+          // Plain <img>, not next/image: uploads don't carry stored
+          // width/height, and next/image needs one of those (or a
+          // fixed-size "fill" parent) to render — which is exactly what
+          // caused the letterboxed space around scaled-to-fit images.
+          // A plain <img> lets this container hug the image's own
+          // scaled height instead.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={imageUrl}
             alt={title}
-            fill
-            sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-stone text-sm">
+          <div className="aspect-[4/5] flex items-center justify-center text-stone text-sm">
             No image
-          </div>
-        )}
-        {soldOut && (
-          <div className="absolute top-3 left-3 bg-paper px-2 py-1 text-[10px] uppercase tracking-widest2">
-            Sold out
           </div>
         )}
       </div>
       <div className="mt-3 flex items-baseline justify-between">
         <h3 className="font-display text-base">{title}</h3>
-        <span className="text-sm">{formatMinor(priceMinor, currency)}</span>
+        <PriceTag priceMinor={priceMinor} currency={currency} className="text-sm" />
       </div>
       <p className="label-caps mt-1">{editionSummary(availableCount, editionSize)}</p>
     </Link>

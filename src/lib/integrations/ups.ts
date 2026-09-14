@@ -52,6 +52,22 @@ export type ShippingAddress = {
   phone?: string;
 };
 
+export type PackageDetails = {
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+};
+
+export type CustomsItem = {
+  description: string;
+  hsCode: string;
+  quantity: number;
+  unitValueMinor: number;
+  totalValueMinor: number;
+  originCountryCode: string;
+};
+
 export type CreatedLabel = {
   trackingNumber: string;
   labelUrl?: string;
@@ -59,42 +75,144 @@ export type CreatedLabel = {
   carrier: "UPS" | "ROYAL_MAIL";
 };
 
+/** Dimensions + weight shared between the Shipping and Rating APIs — each
+ * API names the packaging-type field differently ("Packaging" vs
+ * "PackagingType"), so callers add that key themselves alongside this. */
+function packageBlock(pkg: PackageDetails) {
+  return {
+    Dimensions: {
+      UnitOfMeasurement: { Code: "CM" },
+      Length: String(Math.max(1, Math.round(pkg.lengthCm))),
+      Width: String(Math.max(1, Math.round(pkg.widthCm))),
+      Height: String(Math.max(1, Math.round(pkg.heightCm))),
+    },
+    PackageWeight: {
+      UnitOfMeasurement: { Code: "KGS" },
+      Weight: Math.max(0.1, pkg.weightGrams / 1000).toFixed(2),
+    },
+  };
+}
+
 /**
- * Creates a shipment + label for one order. Package weight/dimensions are
- * fixed defaults suitable for a rolled or flat print — adjust per print if
- * needed (e.g. store weight/dims on the Print model).
+ * Registers a document (e.g. a commercial invoice PDF) with UPS's Paperless
+ * Documents API and returns the DocumentID to reference on the shipment
+ * request below — this is what lets an international shipment go out
+ * without a printed invoice physically inside the parcel ("paperless"
+ * customs). Requires the shipper account to be enrolled in the Paperless
+ * Invoice program via UPS (ask your UPS account rep if uploads are refused).
+ *
+ * NOTE: verify the current Paperless Documents API path/payload shape
+ * against developer.ups.com before relying on this — like the other UPS
+ * endpoints here, UPS has changed these before.
+ */
+export async function uploadPaperlessInvoice(params: {
+  pdfBase64: string;
+  reference: string;
+}): Promise<string> {
+  const token = await getAccessToken();
+
+  const payload = {
+    UploadRequest: {
+      ShipperNumber: process.env.UPS_ACCOUNT_NUMBER,
+      UserCreatedForm: {
+        UserCreatedFormFileName: `${params.reference}-commercial-invoice.pdf`,
+        UserCreatedFormFileFormat: "pdf",
+        UserCreatedFormDocumentType: "013", // Commercial Invoice
+        UserCreatedFormFile: params.pdfBase64,
+      },
+    },
+  };
+
+  const res = await fetch(`${baseUrl()}/api/paperlessdocuments/v1/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      transId: crypto.randomUUID(),
+      transactionSrc: "slowlydownward",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error(`UPS paperless invoice upload failed: ${await res.text()}`);
+  const data = await res.json();
+  const documentId = data.UploadResponse?.FormsHistoryDocumentID?.DocumentID;
+  if (!documentId) throw new Error("UPS paperless invoice upload didn't return a document id.");
+  return documentId;
+}
+
+/**
+ * Creates a shipment + label for one order. Package weight/dimensions come
+ * from the ordered print(s) — see src/lib/customs.ts — falling back to
+ * generic placeholders for anything not yet filled in on the product page.
+ *
+ * For a shipment leaving the UK, pass `customs` + `invoiceDocumentId` (from
+ * uploadPaperlessInvoice above) so UPS's international customs forms are
+ * attached electronically rather than needing a printed invoice in the
+ * parcel. Omit both for a UK domestic shipment, which needs neither.
  */
 export async function createUpsShipment(params: {
   shipTo: ShippingAddress;
   reference: string; // e.g. order number
+  package: PackageDetails;
+  customs?: { items: CustomsItem[]; invoiceDocumentId?: string };
 }): Promise<CreatedLabel> {
   const token = await getAccessToken();
 
+  const shipment: any = {
+    Description: "Limited edition art print",
+    Shipper: {
+      Name: "Slowly Downward",
+      ShipperNumber: process.env.UPS_ACCOUNT_NUMBER,
+    },
+    ShipTo: {
+      Name: params.shipTo.name,
+      Address: {
+        AddressLine: [params.shipTo.line1, params.shipTo.line2].filter(Boolean),
+        City: params.shipTo.city,
+        PostalCode: params.shipTo.postalCode,
+        CountryCode: params.shipTo.countryCode,
+      },
+    },
+    ReferenceNumber: [{ Value: params.reference }],
+    Package: [{ Packaging: { Code: "02" }, ...packageBlock(params.package) }],
+  };
+
+  if (params.customs) {
+    shipment.ShipmentServiceOptions = {
+      InternationalForms: {
+        FormType: "01", // Invoice
+        InvoiceNumber: params.reference,
+        InvoiceDate: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
+        ReasonForExport: "SALE",
+        CurrencyCode: "GBP",
+        Product: params.customs.items.map((item) => ({
+          Description: item.description,
+          CommodityCode: item.hsCode,
+          OriginCountryCode: item.originCountryCode,
+          Unit: {
+            Number: String(item.quantity),
+            UnitOfMeasurement: { Code: "PCS" },
+            Value: (item.unitValueMinor / 100).toFixed(2),
+          },
+        })),
+        // Referencing an already-uploaded invoice (see uploadPaperlessInvoice)
+        // is what makes this "paperless" — no printed copy needs to travel
+        // with the parcel. Falls back to letting UPS generate its own basic
+        // form from the data above if no document was uploaded.
+        ...(params.customs.invoiceDocumentId
+          ? {
+              AdditionalDocumentIndicator: "1",
+              FormsHistoryDocumentID: params.customs.invoiceDocumentId,
+            }
+          : {}),
+      },
+    };
+  }
+
   const payload = {
     ShipmentRequest: {
-      Shipment: {
-        Description: "Limited edition art print",
-        Shipper: {
-          Name: "Slowly Downward",
-          ShipperNumber: process.env.UPS_ACCOUNT_NUMBER,
-        },
-        ShipTo: {
-          Name: params.shipTo.name,
-          Address: {
-            AddressLine: [params.shipTo.line1, params.shipTo.line2].filter(Boolean),
-            City: params.shipTo.city,
-            PostalCode: params.shipTo.postalCode,
-            CountryCode: params.shipTo.countryCode,
-          },
-        },
-        ReferenceNumber: [{ Value: params.reference }],
-        Package: [
-          {
-            Packaging: { Code: "02" }, // customer-supplied packaging
-            PackageWeight: { UnitOfMeasurement: { Code: "KGS" }, Weight: "1" },
-          },
-        ],
-      },
+      Shipment: shipment,
       LabelSpecification: { LabelImageFormat: { Code: "PDF" } },
     },
   };
@@ -119,4 +237,113 @@ export async function createUpsShipment(params: {
     labelBase64: result.PackageResults?.[0]?.ShippingLabel?.GraphicImage,
     carrier: "UPS" as const,
   };
+}
+
+export type RateQuote = { amountMinor: number; currency: string; service: string };
+
+/**
+ * Live rate quote via UPS's Rating API (a separate endpoint from Shipping
+ * above) — "Shop" asks for every service UPS will offer between the two
+ * addresses, and this returns the cheapest one found. Used on the packing
+ * tab so a packer can see what UPS would actually cost before choosing it.
+ *
+ * NOTE: verify the current Rating API path/payload shape against
+ * developer.ups.com before going live, same as the Shipping API above.
+ */
+export async function getUpsRate(params: {
+  shipTo: ShippingAddress;
+  shipFrom: ShippingAddress;
+  package: PackageDetails;
+}): Promise<RateQuote> {
+  const token = await getAccessToken();
+
+  const addressBlock = (a: ShippingAddress) => ({
+    Name: a.name,
+    Address: {
+      AddressLine: [a.line1, a.line2].filter(Boolean),
+      City: a.city,
+      PostalCode: a.postalCode,
+      CountryCode: a.countryCode,
+    },
+  });
+
+  const payload = {
+    RateRequest: {
+      Request: { RequestOption: "Shop" },
+      Shipment: {
+        Shipper: { ...addressBlock(params.shipFrom), ShipperNumber: process.env.UPS_ACCOUNT_NUMBER },
+        ShipFrom: addressBlock(params.shipFrom),
+        ShipTo: addressBlock(params.shipTo),
+        Package: [{ PackagingType: { Code: "02" }, ...packageBlock(params.package) }],
+        // Without this, UPS's Rating API returns its standard PUBLISHED
+        // (retail list) rates — not the discounted rates actually negotiated
+        // on your account — even though the request is authenticated with
+        // your account number. This is what asks for the real, discounted
+        // figure instead. If your account's negotiated rates aren't
+        // returned via the API for some reason, UPS falls back to the
+        // published rate silently, so if numbers still look too high after
+        // this change, ask your UPS account rep to confirm "negotiated
+        // rates via API" is switched on for your account.
+        ShipmentRatingOptions: { NegotiatedRatesIndicator: "Y" },
+      },
+    },
+  };
+
+  const res = await fetch(`${baseUrl()}/api/rating/${UPS_API_VERSION}/Shop`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      transId: crypto.randomUUID(),
+      transactionSrc: "slowlydownward",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error(`UPS rate lookup failed: ${await res.text()}`);
+  const data = await res.json();
+  const rated = data.RateResponse?.RatedShipment;
+  const options = Array.isArray(rated) ? rated : rated ? [rated] : [];
+  if (options.length === 0) throw new Error("UPS returned no rate options for this address.");
+
+  // Prefer the negotiated (discounted) charge when UPS returns one for a
+  // given service — it lives in a separate node from the published rate,
+  // oddly under a singular "TotalCharge" rather than "TotalCharges". Falls
+  // back to the published rate for any service where a negotiated figure
+  // isn't present.
+  const amountFor = (o: any) => Number(o.NegotiatedRateCharges?.TotalCharge?.MonetaryValue ?? o.TotalCharges.MonetaryValue);
+
+  const cheapest = options.reduce((min: any, o: any) => (amountFor(o) < amountFor(min) ? o : min));
+
+  return {
+    amountMinor: Math.round(amountFor(cheapest) * 100),
+    currency: cheapest.NegotiatedRateCharges?.TotalCharge?.CurrencyCode ?? cheapest.TotalCharges.CurrencyCode ?? "GBP",
+    service: cheapest.Service?.Description ?? `Service ${cheapest.Service?.Code ?? ""}`.trim(),
+  };
+}
+
+export type TrackingEvent = { status: string; description: string; occurredAt?: string };
+
+/**
+ * Live tracking lookup via UPS's Track API. Returns the carrier's own
+ * current status string (e.g. "In Transit", "Delivered") — shown as-is on
+ * the order detail page rather than mapped to our own vocabulary, since
+ * UPS's own wording is exactly what's useful to relay to a customer.
+ *
+ * NOTE: verify the current Track API path against developer.ups.com.
+ */
+export async function getUpsTracking(trackingNumber: string): Promise<TrackingEvent> {
+  const token = await getAccessToken();
+  const res = await fetch(`${baseUrl()}/api/track/v1/details/${encodeURIComponent(trackingNumber)}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      transId: crypto.randomUUID(),
+      transactionSrc: "slowlydownward",
+    },
+  });
+  if (!res.ok) throw new Error(`UPS tracking lookup failed: ${await res.text()}`);
+  const data = await res.json();
+  const activity = data.trackResponse?.shipment?.[0]?.package?.[0]?.activity?.[0];
+  const status = activity?.status?.description ?? "Unknown";
+  return { status, description: status, occurredAt: activity?.date };
 }
