@@ -49,11 +49,23 @@ export async function BlockRenderer({ blocks }: { blocks: Block[] }) {
 
 async function renderBlock(block: Block) {
   switch (block.type) {
-    case "hero":
+    case "hero": {
+      // The section's own padding is sized for a full hero — a big title
+      // plus room to breathe above and below it. With no heading (just an
+      // eyebrow line, e.g. "Stanley Donwood — Limited Editions" sitting
+      // directly above a print grid) that same padding is mostly wasted
+      // vertical space, which is exactly the "too much white space above
+      // the prints" complaint — so a heading-less hero collapses to a
+      // much shorter banner instead of reserving room for a title that
+      // isn't there.
+      const hasHeading = Boolean(block.heading);
       return (
-        <section key={block.id} className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
-          {block.eyebrow && <p className="label-caps mb-6">{block.eyebrow}</p>}
-          {block.heading && (
+        <section
+          key={block.id}
+          className={`mx-auto max-w-6xl px-6 text-center ${hasHeading ? "pt-20 pb-16" : "pt-10 pb-4"}`}
+        >
+          {block.eyebrow && <p className={`label-caps ${hasHeading ? "mb-6" : ""}`}>{block.eyebrow}</p>}
+          {hasHeading && (
             <h1 className="font-display text-4xl md:text-6xl leading-tight max-w-3xl mx-auto">
               {block.heading}
             </h1>
@@ -68,6 +80,7 @@ async function renderBlock(block: Block) {
           )}
         </section>
       );
+    }
 
     case "text":
       return (
