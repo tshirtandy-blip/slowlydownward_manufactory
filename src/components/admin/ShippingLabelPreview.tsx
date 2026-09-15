@@ -43,6 +43,12 @@ export function ShippingLabelPreview({
       }</title><style>@page{size:4in 6in;margin:0;}html,body{margin:0;padding:0;height:100%;}body{display:flex;align-items:center;justify-content:center;}img{max-width:4in;max-height:6in;width:auto;height:auto;display:block;}</style></head><body><img src="${labelUrl}" onload="window.focus();window.print();" /></body></html>`
     );
     win.document.close();
+    // Close the popup itself once the print dialog is dismissed — whether
+    // the packer actually printed or cancelled — so it doesn't sit there
+    // needing to be closed by hand every time. "afterprint" fires either
+    // way; window.onafterprint is set on the popup (not this page), so it
+    // only affects that small print window.
+    win.onafterprint = () => win.close();
   }
 
   return (
