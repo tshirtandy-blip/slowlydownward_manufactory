@@ -197,6 +197,19 @@ export async function createUpsShipment(params: {
     ShipmentServiceOptions: {
       DeliveryConfirmation: { DCISType: "1" },
     },
+    // UPS rejects a shipment with no billing option at all (error 120416,
+    // "A single billing option is required per shipment") — this bills
+    // transportation to the same account the shipment is created under
+    // (must match Shipper.ShipperNumber above), i.e. the shop pays UPS
+    // directly rather than the recipient or a third party.
+    PaymentInformation: {
+      ShipmentCharge: [
+        {
+          Type: { Code: "01", Description: "Transportation" },
+          BillShipper: { AccountNumber: process.env.UPS_ACCOUNT_NUMBER },
+        },
+      ],
+    },
   };
 
   if (params.customs) {
