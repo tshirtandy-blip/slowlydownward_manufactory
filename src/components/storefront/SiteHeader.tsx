@@ -66,8 +66,8 @@ function Logo({ settings }: { settings: HeaderSettings }) {
         <img
           src={settings.logoImageUrl}
           alt={settings.logoText || "Home"}
-          className="w-auto object-contain"
-          style={{ height: `${40 * scale}px` }}
+          className="w-auto h-auto object-contain"
+          style={{ maxHeight: `${40 * scale}px`, maxWidth: "100%" }}
         />
       </Link>
     );

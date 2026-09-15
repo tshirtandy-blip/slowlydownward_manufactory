@@ -53,9 +53,11 @@ async function renderBlock(block: Block) {
       return (
         <section key={block.id} className="mx-auto max-w-6xl px-6 pt-20 pb-16 text-center">
           {block.eyebrow && <p className="label-caps mb-6">{block.eyebrow}</p>}
-          <h1 className="font-display text-4xl md:text-6xl leading-tight max-w-3xl mx-auto">
-            {block.heading}
-          </h1>
+          {block.heading && (
+            <h1 className="font-display text-4xl md:text-6xl leading-tight max-w-3xl mx-auto">
+              {block.heading}
+            </h1>
+          )}
           {block.subheading && (
             <p className="mt-6 text-stone max-w-xl mx-auto">{block.subheading}</p>
           )}
