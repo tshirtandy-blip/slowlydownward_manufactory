@@ -5,14 +5,6 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { getImportType, type ImportSummary } from "@/lib/imports/registry";
 
-// A products import fetches and re-hosts each row's image, which can add
-// up over a big file — raises the ceiling Vercel gives this action as far
-// as the hosting plan allows (a Hobby plan caps well below this regardless
-// of what's set here, which is the main reason very large image-heavy
-// files are better split into a few smaller uploads — see the note on the
-// import page itself).
-export const maxDuration = 300;
-
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") throw new Error("Not authorised");

@@ -4,6 +4,14 @@ import { getImportType } from "@/lib/imports/registry";
 import { ImportCsvForm } from "./ImportCsvForm";
 
 export const dynamic = "force-dynamic";
+// A products import fetches and re-hosts each row's image, which can add
+// up over a big file — raises the ceiling Vercel gives the import action as
+// far as the hosting plan allows (a Hobby plan caps well below this
+// regardless of what's set here, which is the main reason very large
+// image-heavy files are better split into a few smaller uploads — see the
+// note further down this page). Route segment config like this has to live
+// in the page/route file, not in a "use server" actions file.
+export const maxDuration = 300;
 
 export default function ImportTypePage({ params }: { params: { type: string } }) {
   const type = getImportType(params.type);
