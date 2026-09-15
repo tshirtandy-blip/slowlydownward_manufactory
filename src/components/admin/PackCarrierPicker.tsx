@@ -92,11 +92,19 @@ export function PackCarrierPicker({
 
   function handleSubmit() {
     startTransition(async () => {
-      const res = await packAction(orderId, carrier, overridesFromFields());
-      if (res.ok) {
-        setResult({ done: true, warning: res.labelWarning, labelUrl: res.labelUrl, trackingNumber: res.trackingNumber });
-      } else {
-        setResult({ done: false, error: res.error });
+      try {
+        const res = await packAction(orderId, carrier, overridesFromFields());
+        if (res.ok) {
+          setResult({ done: true, warning: res.labelWarning, labelUrl: res.labelUrl, trackingNumber: res.trackingNumber });
+        } else {
+          setResult({ done: false, error: res.error });
+        }
+      } catch (err) {
+        // A network hiccup or a cold-start error can reject the action
+        // outright rather than returning { ok: false } — caught here so it
+        // shows as a message that stays on screen, not a browser error
+        // toast that's easy to miss.
+        setResult({ done: false, error: err instanceof Error ? err.message : "Something went wrong creating the label. Try again." });
       }
     });
   }

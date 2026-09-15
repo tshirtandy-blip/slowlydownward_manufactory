@@ -146,6 +146,25 @@ export async function packOrder(
     return { ok: false, error: "Not authorised" };
   }
 
+  // Wrapped so ANY unexpected failure here — a bad database lookup, a
+  // carrier API throwing something not already caught below, etc — comes
+  // back as a plain, readable error the packing screen can show and keep
+  // on screen, instead of an uncaught exception that shows Next.js's own
+  // generic error toast (easy to miss — it's what looked like a red
+  // message flashing and vanishing).
+  try {
+    return await packOrderUnsafe(orderId, carrier, session.user.id, overrides);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Packing failed unexpectedly." };
+  }
+}
+
+async function packOrderUnsafe(
+  orderId: string,
+  carrier: PackCarrier,
+  userId: string,
+  overrides?: PackOverrides
+): Promise<{ ok: true; labelWarning?: string; labelUrl?: string; trackingNumber?: string }> {
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: orderId },
     include: { items: { include: { print: true } }, customer: true },
@@ -230,7 +249,7 @@ export async function packOrder(
       labelWarning = err instanceof Error ? err.message : "Label creation failed.";
       await prisma.auditLog.create({
         data: {
-          userId: session.user.id,
+          userId,
           action: "shipping_label_failed",
           entityType: "Order",
           entityId: orderId,
@@ -244,7 +263,7 @@ export async function packOrder(
     where: { id: orderId },
     data: {
       status: "PACKED",
-      packedByUserId: session.user.id,
+      packedByUserId: userId,
       packedAt: new Date(),
       trackingNumber,
       labelUrl,
@@ -255,10 +274,17 @@ export async function packOrder(
   });
 
   await prisma.auditLog.create({
-    data: { userId: session.user.id, action: "order_packed", entityType: "Order", entityId: orderId, meta: { carrier } },
+    data: { userId, action: "order_packed", entityType: "Order", entityId: orderId, meta: { carrier } },
   });
 
-  revalidatePath("/admin/pack");
+  // Deliberately NOT revalidating /admin/pack here. That list only shows
+  // orders still awaiting packing, so the moment this one flips to PACKED
+  // it would drop out of the list — refreshing this page immediately would
+  // yank the just-packed order (and the label/print button, or an error
+  // message) off the screen before a packer could read or use it. The
+  // order/orders pages are still revalidated so they're accurate whenever
+  // someone next opens them; the packing queue simply catches up with this
+  // order's absence next time it's loaded or refreshed.
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
 
