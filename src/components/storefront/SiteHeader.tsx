@@ -91,7 +91,12 @@ function CurrencySelector() {
       value={isAuto ? "AUTO" : currency}
       onChange={(e) => setCurrency(e.target.value)}
       aria-label="Currency"
-      className="label-caps bg-transparent border-none pr-4 cursor-pointer hover:text-ink focus:outline-none"
+      // appearance-none strips the browser's own dropdown arrow — with no
+      // border or background here (just plain text floating in the
+      // header bar) that native arrow rendered as a stray mark next to
+      // the logo rather than looking like part of a control.
+      className="label-caps bg-transparent border-none appearance-none cursor-pointer hover:text-ink focus:outline-none"
+      style={{ WebkitAppearance: "none", MozAppearance: "none" }}
     >
       <option value="AUTO">Auto ({currency})</option>
       {SUPPORTED_CURRENCIES.map((c) => (
