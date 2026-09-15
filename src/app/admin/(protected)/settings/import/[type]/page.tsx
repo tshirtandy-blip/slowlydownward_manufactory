@@ -45,6 +45,22 @@ export default function ImportTypePage({ params }: { params: { type: string } })
         </div>
       </div>
 
+      {type.key === "products" && (
+        <div className="border hairline p-5 mb-6 text-sm text-stone">
+          <p>
+            Any <code>image_url</code> you fill in is downloaded and copied into your own image storage
+            automatically — the product ends up with its own permanent photo, not just a link to wherever the
+            spreadsheet pointed. Any row whose image couldn't be fetched still gets imported, just without a
+            photo (add one afterwards from the product's own page).
+          </p>
+          <p className="mt-2">
+            For a big catalogue (e.g. 200+ products with photos), it's safer to upload it as a few smaller files
+            — 40-50 rows each — rather than one huge one, since fetching that many images at once can take
+            longer than a single upload comfortably allows.
+          </p>
+        </div>
+      )}
+
       <div className="mb-2">
         <h3 className="label-caps mb-2">2. Upload it</h3>
       </div>
