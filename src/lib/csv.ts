@@ -40,13 +40,75 @@ export function csvEscape(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+/** Parses a whole CSV file's text into rows of fields, the way `splitCsvLine`
+ * handles a single line but for the entire file at once — which matters
+ * because a quoted field can legitimately contain a real newline (a
+ * multi-paragraph description pasted in from a rich-text editor or an
+ * old Shopify export, most commonly), and splitting the file into lines
+ * *before* parsing quotes — which every importer here used to do —
+ * chops a field like that into several bogus "rows" the moment it hits
+ * one of those embedded newlines. This walks the whole text once,
+ * tracking quote state across newlines instead of resetting it at each
+ * one, so a quoted field's own line breaks stay inside that one field
+ * and its one row. CRLF and lone-CR line endings are both normalised to
+ * LF first so neither ends up embedded in a field. */
+export function parseCsvText(text: string): string[][] {
+  const src = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inQuotes) {
+      if (ch === '"' && src[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      field = "";
+      row = [];
+    } else {
+      field += ch;
+    }
+  }
+  // The last field/row of a file that doesn't end with a trailing newline.
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/** True for a row that's entirely empty fields — a wholly blank line, or
+ * (just as common from a spreadsheet export) a line of nothing but
+ * commas. Callers skip these silently rather than reporting them as a
+ * row with a missing required column. */
+export function isBlankRow(fields: string[]): boolean {
+  return fields.every((f) => f.trim() === "");
+}
+
 /** Splits a whole file into a lowercased header row and the remaining data
- * rows (each already split into fields), skipping blank lines. */
+ * rows (each already split into fields) — see parseCsvText for how
+ * multi-line quoted fields are handled. Genuinely blank rows are dropped
+ * entirely rather than counted (or numbered) as data rows. */
 export function parseCsvRows(text: string): { header: string[]; lines: string[][] } {
-  const rawLines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (rawLines.length === 0) return { header: [], lines: [] };
-  const header = splitCsvLine(rawLines[0]).map((h) => h.trim().toLowerCase());
-  const lines = rawLines.slice(1).map(splitCsvLine);
+  const allRows = parseCsvText(text).filter((r) => !isBlankRow(r));
+  if (allRows.length === 0) return { header: [], lines: [] };
+  const header = allRows[0].map((h) => h.trim().toLowerCase());
+  const lines = allRows.slice(1);
   return { header, lines };
 }
 

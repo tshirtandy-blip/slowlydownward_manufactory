@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { splitCsvLine, yesNoCell, stringCell } from "@/lib/csv";
+import { parseCsvText, isBlankRow, yesNoCell, stringCell } from "@/lib/csv";
 import { uploadImage } from "@/lib/supabase-admin";
 
 /**
@@ -53,11 +53,11 @@ export function slugifyTitle(title: string): string {
 }
 
 export function parseProductsCsv(text: string): { rows: ParsedProductRow[]; errors: string[] } {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = parseCsvText(text);
   const errors: string[] = [];
   if (lines.length === 0) return { rows: [], errors: ["The file is empty."] };
 
-  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const header = lines[0].map((h) => h.trim().toLowerCase());
   const col = (name: string) => header.indexOf(name);
   const idx = {
     title: col("title"),
@@ -80,8 +80,9 @@ export function parseProductsCsv(text: string): { rows: ParsedProductRow[]; erro
 
   const rows: ParsedProductRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const fields = splitCsvLine(lines[i]);
+    const fields = lines[i];
     const lineNo = i + 1;
+    if (isBlankRow(fields)) continue; // a wholly blank row — not worth reporting as an error
     const title = fields[idx.title]?.trim();
     if (!title) {
       errors.push(`Line ${lineNo}: missing title — skipped.`);

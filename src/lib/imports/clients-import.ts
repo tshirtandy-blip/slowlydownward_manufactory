@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { splitCsvLine, yesNoCell, stringCell } from "@/lib/csv";
+import { parseCsvText, isBlankRow, yesNoCell, stringCell } from "@/lib/csv";
 
 /**
  * Bulk-import for archival client records (Admin > Settings > Import) —
@@ -27,11 +27,11 @@ export type ParsedClientRow = {
 };
 
 export function parseClientsCsv(text: string): { rows: ParsedClientRow[]; errors: string[] } {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const lines = parseCsvText(text);
   const errors: string[] = [];
   if (lines.length === 0) return { rows: [], errors: ["The file is empty."] };
 
-  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const header = lines[0].map((h) => h.trim().toLowerCase());
   const col = (name: string) => header.indexOf(name);
   const idx = {
     email: col("email"),
@@ -47,8 +47,9 @@ export function parseClientsCsv(text: string): { rows: ParsedClientRow[]; errors
   const seen = new Set<string>();
   const rows: ParsedClientRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const fields = splitCsvLine(lines[i]);
+    const fields = lines[i];
     const lineNo = i + 1;
+    if (isBlankRow(fields)) continue; // a wholly blank row — not worth reporting as an error
     const email = fields[idx.email]?.trim().toLowerCase();
     if (!email || !email.includes("@")) {
       errors.push(`Line ${lineNo}: missing or invalid email — skipped.`);
