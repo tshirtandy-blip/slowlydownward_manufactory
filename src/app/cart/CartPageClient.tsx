@@ -235,7 +235,7 @@ export function CartPageClient({
             {items.map((item) => (
               <div
                 key={cartLineKey(item.printId, item.requestedEditionNumber)}
-                className="flex items-center justify-between gap-4 border-b hairline pb-4"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b hairline pb-4"
               >
                 <div className="flex items-center gap-4 min-w-0">
                   {item.imageUrl ? (
@@ -259,7 +259,13 @@ export function CartPageClient({
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-4 flex-shrink-0">
+                {/* Stacks below the image/title on narrow screens instead of
+                    squeezing into the same row — at phone width there isn't
+                    room for image + title + qty + Remove + price all on one
+                    line, and forcing it was crushing the title/edition text
+                    into an unreadably narrow column. pl-20 lines it up under
+                    the title (skipping the image's width) once stacked. */}
+                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-20 sm:pl-0 flex-shrink-0">
                   {item.requestedEditionNumber != null ? (
                     // Only one physical copy exists of any given number, so
                     // there's nothing to adjust here — unlike a "no
