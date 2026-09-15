@@ -94,8 +94,15 @@ function CurrencySelector() {
       // appearance-none strips the browser's own dropdown arrow — with no
       // border or background here (just plain text floating in the
       // header bar) that native arrow rendered as a stray mark next to
-      // the logo rather than looking like part of a control.
-      className="label-caps bg-transparent border-none appearance-none cursor-pointer hover:text-ink focus:outline-none"
+      // the logo rather than looking like part of a control. Hidden
+      // below the sm breakpoint entirely — on a phone the header has too
+      // little room either way, so it's automatic-by-IP-detection only
+      // there (see detectCurrencyFromRequest / CurrencyProvider — that
+      // detection isn't affected by this control's visibility at all,
+      // it always runs). A VPN'd visitor on their phone just gets
+      // whatever currency their apparent location resolves to, same as
+      // anyone who never touches this dropdown on desktop either.
+      className="hidden sm:inline-block label-caps bg-transparent border-none appearance-none cursor-pointer hover:text-ink focus:outline-none"
       style={{ WebkitAppearance: "none", MozAppearance: "none" }}
     >
       <option value="AUTO">Auto ({currency})</option>
