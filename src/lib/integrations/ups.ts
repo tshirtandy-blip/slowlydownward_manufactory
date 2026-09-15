@@ -220,14 +220,16 @@ export async function createUpsShipment(params: {
     // "A single billing option is required per shipment") — this bills
     // transportation to the same account the shipment is created under
     // (must match Shipper.ShipperNumber above), i.e. the shop pays UPS
-    // directly rather than the recipient or a third party.
+    // directly rather than the recipient or a third party. Type is a
+    // plain string code ("01" = Transportation), NOT a {Code, Description}
+    // object — sending it as an object is what caused error 9120067,
+    // "Missing or invalid shipment charge type" (confirmed against UPS's
+    // own published example at github.com/UPS-API/api-documentation).
     PaymentInformation: {
-      ShipmentCharge: [
-        {
-          Type: { Code: "01", Description: "Transportation" },
-          BillShipper: { AccountNumber: process.env.UPS_ACCOUNT_NUMBER },
-        },
-      ],
+      ShipmentCharge: {
+        Type: "01",
+        BillShipper: { AccountNumber: process.env.UPS_ACCOUNT_NUMBER },
+      },
     },
   };
 
