@@ -29,6 +29,7 @@ const DEFAULTS = {
   editionReservationMinutes: 5,
   editionPickerNote:
     "Choosing a number holds it for you for a short time — complete checkout before it runs out, or it's released back to general availability.",
+  emailLogoUrl: null as string | null,
 };
 
 export async function getSiteSettings() {

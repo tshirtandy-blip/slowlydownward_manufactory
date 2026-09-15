@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { listEmailTemplates, EMAIL_TEMPLATE_INFO, type EmailTemplateKey } from "@/lib/email-templates";
+import { getSiteSettings } from "@/lib/site-settings";
+import { EmailLogoForm } from "./EmailLogoForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmailTemplatesPage() {
-  const templates = await listEmailTemplates();
+  const [templates, settings] = await Promise.all([listEmailTemplates(), getSiteSettings()]);
 
   return (
     <div>
@@ -13,6 +15,9 @@ export default async function EmailTemplatesPage() {
         The wording sent out automatically at each of these moments. Order details, price breakdowns and buttons
         are always added automatically — you're just editing the message around them.
       </p>
+
+      <EmailLogoForm initialLogoUrl={settings.emailLogoUrl ?? ""} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
         {templates.map((template) => {
           const key = template.key as EmailTemplateKey;

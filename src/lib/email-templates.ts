@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sanitizeRichText } from "@/lib/sanitize";
 import { formatMinor } from "@/lib/money";
+import { getSiteSettings } from "@/lib/site-settings";
 
 /**
  * Admin-editable wording for the site's transactional emails (Admin >
@@ -113,6 +114,19 @@ export async function saveEmailTemplate(
 const WRAPPER_OPEN = `<div style="font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;max-width:520px;margin:0 auto;">`;
 const WRAPPER_CLOSE = `</div>`;
 
+/** Centered logo shown at the top of every email, above the template's own
+ * wording — set from Admin > Settings > Emails (SiteSettings.emailLogoUrl),
+ * separate from the storefront header's own logo since an email needs a
+ * plain hosted image rather than a text/image/none choice. Renders nothing
+ * at all when no logo has been set. */
+function emailHeaderHtml(logoUrl: string | null): string {
+  if (!logoUrl) return "";
+  const storeUrl = process.env.STORE_URL || "#";
+  return `<p style="text-align:center;margin:0 0 28px;"><a href="${escapeHtml(storeUrl)}"><img src="${escapeHtml(
+    logoUrl
+  )}" alt="" style="max-width:220px;max-height:90px;width:auto;height:auto;border:0;display:inline-block;" /></a></p>`;
+}
+
 type OrderItemLine = { title: string; editionNumber: number | null; priceMinor: number; currency: string };
 
 function itemsTableHtml(items: OrderItemLine[]): string {
@@ -158,10 +172,11 @@ export async function renderPaymentLinkEmail(params: {
   totalMinor: number;
   currency: string;
 }): Promise<{ subject: string; html: string }> {
-  const template = await getEmailTemplate("PAYMENT_LINK");
+  const [template, settings] = await Promise.all([getEmailTemplate("PAYMENT_LINK"), getSiteSettings()]);
   const vars = { orderNumber: params.orderNumber };
   const html =
     WRAPPER_OPEN +
+    emailHeaderHtml(settings.emailLogoUrl) +
     fillTokens(template.introHtml, vars) +
     itemsTableHtml(params.items) +
     totalsTableHtml(params.subtotalMinor, params.shippingMinor, params.totalMinor, params.currency) +
@@ -183,10 +198,11 @@ export async function renderOrderConfirmationEmail(params: {
   totalMinor: number;
   currency: string;
 }): Promise<{ subject: string; html: string }> {
-  const template = await getEmailTemplate("ORDER_CONFIRMATION");
+  const [template, settings] = await Promise.all([getEmailTemplate("ORDER_CONFIRMATION"), getSiteSettings()]);
   const vars = { customerName: params.customerName, orderNumber: params.orderNumber };
   const html =
     WRAPPER_OPEN +
+    emailHeaderHtml(settings.emailLogoUrl) +
     fillTokens(template.introHtml, vars) +
     itemsTableHtml(params.items) +
     totalsTableHtml(params.subtotalMinor, params.shippingMinor, params.totalMinor, params.currency) +
@@ -197,9 +213,14 @@ export async function renderOrderConfirmationEmail(params: {
 }
 
 export async function renderWelcomeEmail(params: { customerName: string }): Promise<{ subject: string; html: string }> {
-  const template = await getEmailTemplate("WELCOME");
+  const [template, settings] = await Promise.all([getEmailTemplate("WELCOME"), getSiteSettings()]);
   const vars = { customerName: params.customerName };
-  const html = WRAPPER_OPEN + fillTokens(template.introHtml, vars) + fillTokens(template.closingHtml, vars) + WRAPPER_CLOSE;
+  const html =
+    WRAPPER_OPEN +
+    emailHeaderHtml(settings.emailLogoUrl) +
+    fillTokens(template.introHtml, vars) +
+    fillTokens(template.closingHtml, vars) +
+    WRAPPER_CLOSE;
   return { subject: fillTokens(template.subject, vars), html };
 }
 

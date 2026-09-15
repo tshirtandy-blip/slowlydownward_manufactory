@@ -128,6 +128,13 @@ model SiteSettings {
   editionReservationMinutes Int    @default(5)
   editionPickerNote         String @default("Choosing a number holds it for you for a short time — complete checkout before it runs out, or it's released back to general availability.")
 
+  // Shown centered at the top of every transactional email (Admin >
+  // Settings > Emails) — separate from the site header's own logo above,
+  // since an email needs a plain hosted image rather than the header's
+  // text/image/none choice. Null means no header image is shown, just the
+  // template's own wording.
+  emailLogoUrl String?
+
   updatedAt            DateTime    @updatedAt
 }
 
