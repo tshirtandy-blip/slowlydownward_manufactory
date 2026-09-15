@@ -95,6 +95,47 @@ export async function resendPaymentLinkEmail(orderId: string): Promise<{ ok: tru
   }
 }
 
+// --- TEMPORARY: testing helper -------------------------------------------
+// Lets Andrew re-test the packing/label flow against a real paid order
+// without creating and paying for a fresh manual order each time. Resets
+// everything the packing flow sets, back to how a freshly-paid order
+// looks, so it reappears in the packing queue. ADMIN-only since it
+// rewrites an order's real status. Remove this once the packing/label
+// flow is confirmed working end-to-end and no longer needs repeat testing.
+export async function resetOrderForTesting(orderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "ADMIN") {
+    return { ok: false, error: "Not authorised" };
+  }
+
+  try {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: "PAID",
+        shippingCarrier: "UNASSIGNED",
+        trackingNumber: null,
+        labelUrl: null,
+        shippedAt: null,
+        courierStatus: null,
+        courierStatusAt: null,
+        packedByUserId: null,
+        packedAt: null,
+      },
+    });
+    await prisma.auditLog.create({
+      data: { userId: session.user.id, action: "order_reset_for_testing", entityType: "Order", entityId: orderId },
+    });
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/pack");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't reset this order." };
+  }
+}
+// ---------------------------------------------------------------------------
+
 /** Cancels a manual order that's still awaiting payment — releases whatever
  * edition(s) it was holding and invalidates its payment link. Refuses
  * anything not a still-pending manual order (a paid order needs a refund

@@ -1,14 +1,18 @@
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { authOptions } from "@/lib/auth";
 import { formatMinor } from "@/lib/money";
 import { CourierStatusEditor } from "@/components/admin/CourierStatusEditor";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { ManualOrderPanel } from "@/components/admin/ManualOrderPanel";
 import { ShippingLabelPreview } from "@/components/admin/ShippingLabelPreview";
+import { ResetOrderTestingButton } from "@/components/admin/ResetOrderTestingButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
   const order = await prisma.order.findUnique({
     where: { id: params.id },
     include: {
@@ -169,6 +173,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           {order.xeroInvoiceId && <span>Xero invoice created</span>}
           {order.mailchimpSynced && <span>Synced to Mailchimp</span>}
         </div>
+      )}
+
+      {session?.user.role === "ADMIN" && order.status !== "PENDING_PAYMENT" && (
+        <ResetOrderTestingButton orderId={order.id} />
       )}
     </div>
   );
