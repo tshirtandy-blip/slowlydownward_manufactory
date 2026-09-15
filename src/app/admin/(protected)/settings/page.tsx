@@ -41,6 +41,10 @@ export default function SettingsPage() {
           <h2 className="font-display text-lg mb-1">Emails</h2>
           <p className="text-sm text-stone">Edit the wording of the payment link, order confirmation, and welcome emails.</p>
         </Link>
+        <Link href="/admin/settings/import" className="border hairline p-6 hover:border-ink block">
+          <h2 className="font-display text-lg mb-1">Import data</h2>
+          <p className="text-sm text-stone">Bring in clients, historical purchases, or a batch of products from a CSV.</p>
+        </Link>
       </div>
     </div>
   );
