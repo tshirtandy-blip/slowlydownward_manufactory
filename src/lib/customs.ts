@@ -75,6 +75,28 @@ export function getCustomsSummary(order: OrderWithItems, originCountryCode: stri
   };
 }
 
+/** Scales every line's declared value proportionally so the total matches
+ * a packer's confirmed customs value (Admin > Packing queue > "Confirm
+ * parcel size and customs value") — used only when that confirmed figure
+ * differs from the sum of each print's own customsValueMinor. Keeps every
+ * line's own description/HS code and its relative share of the total
+ * intact, since UPS's international forms need an itemized declaration,
+ * not just one blanket number. Returns the summary unchanged when no
+ * override is given, or the computed total is zero (nothing to scale
+ * from). */
+export function withCustomsValueOverride(customs: CustomsSummary, overrideMinor?: number): CustomsSummary {
+  if (overrideMinor == null || customs.totalValueMinor === 0 || overrideMinor === customs.totalValueMinor) {
+    return customs;
+  }
+  const factor = overrideMinor / customs.totalValueMinor;
+  const lines = customs.lines.map((l) => ({
+    ...l,
+    unitValueMinor: Math.round(l.unitValueMinor * factor),
+    totalValueMinor: Math.round(l.totalValueMinor * factor),
+  }));
+  return { ...customs, lines, totalValueMinor: lines.reduce((sum, l) => sum + l.totalValueMinor, 0) };
+}
+
 /** Overall packaged dimensions for an order's parcel — used for the UPS
  * rate quote and shipment. Since prints of different sizes packed together
  * can't be reduced to one box automatically, this just takes the largest

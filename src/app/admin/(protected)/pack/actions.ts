@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createUpsShipment, upsConfigured, getUpsRate, uploadPaperlessInvoice } from "@/lib/integrations/ups";
 import { createRoyalMailShipment, royalMailConfigured } from "@/lib/integrations/royalmail";
 import { getStoreAddress, storeAddressConfigured } from "@/lib/store-address";
-import { getCustomsSummary, getPackageDimensionsCm } from "@/lib/customs";
+import { getCustomsSummary, getPackageDimensionsCm, withCustomsValueOverride } from "@/lib/customs";
 import { buildCommercialInvoicePdf } from "@/lib/commercial-invoice";
 import { getRoyalMailRates, getRoyalMailCost } from "@/lib/royal-mail-rates";
 
@@ -24,7 +24,15 @@ export type PackCarrier = "ROYAL_MAIL" | "UPS" | "COLLECTION";
  * credentials + a store address configured) and a calculated Royal Mail
  * cost from your own price list (needs at least one weight band set up —
  * see Admin > Settings > Shipping). Both are looked up from the order's
- * actual weight, not the flat price the customer paid at checkout. */
+ * actual weight, not the flat price the customer paid at checkout.
+ *
+ * Also returns the defaults for the "confirm parcel size and customs
+ * value" step shown before a UPS label is created for anything leaving the
+ * UK — destinationCountry/requiresCustoms decide whether that step is shown
+ * at all, and defaultDims/defaultCustomsValueMinor pre-fill it from the
+ * order's own items (largest item's dimensions, summed customs value —
+ * see src/lib/customs.ts) so a packer only needs to change something if
+ * it's actually wrong. */
 export async function getCarrierCosts(orderId: string) {
   // This file is "use server", which makes every export here a directly
   // invocable server action regardless of who imports it — so this checks
@@ -43,11 +51,12 @@ export async function getCarrierCosts(orderId: string) {
 
   const dims = getPackageDimensionsCm(order);
   const customs = getCustomsSummary(order, getStoreAddress().countryCode);
+  const destinationCountry = String(address?.country || "GB").toUpperCase();
+  const requiresCustoms = needsCustoms(destinationCountry);
 
   let royalMail: { amountMinor: number; currency: string; service: string; overWeight: boolean } | null = null;
   let royalMailError: string | null = "No shipping address captured for this order yet.";
   if (address) {
-    const destinationCountry = String(address.country || "GB").toUpperCase();
     const royalMailRates = await getRoyalMailRates();
     const rmQuote = getRoyalMailCost({ countryCode: destinationCountry, weightGrams: customs.totalWeightGrams, ...dims }, royalMailRates);
     royalMail = rmQuote
@@ -67,6 +76,10 @@ export async function getCarrierCosts(orderId: string) {
         ? "Your shipping address isn't set (STORE_ADDRESS_* in .env)."
         : "No shipping address captured for this order yet.",
       customsPlaceholder: false,
+      destinationCountry,
+      requiresCustoms,
+      defaultDims: dims,
+      defaultCustomsValueMinor: customs.totalValueMinor,
     };
   }
 
@@ -88,7 +101,11 @@ export async function getCarrierCosts(orderId: string) {
       royalMailError,
       ups: quote,
       upsError: null as string | null,
-      customsPlaceholder: needsCustoms(address.country) && !customs.allDetailsComplete,
+      customsPlaceholder: requiresCustoms && !customs.allDetailsComplete,
+      destinationCountry,
+      requiresCustoms,
+      defaultDims: dims,
+      defaultCustomsValueMinor: customs.totalValueMinor,
     };
   } catch (err) {
     return {
@@ -97,14 +114,33 @@ export async function getCarrierCosts(orderId: string) {
       ups: null,
       upsError: err instanceof Error ? err.message : "UPS rate lookup failed.",
       customsPlaceholder: false,
+      destinationCountry,
+      requiresCustoms,
+      defaultDims: dims,
+      defaultCustomsValueMinor: customs.totalValueMinor,
     };
   }
 }
 
+/** Packer-confirmed overrides from the "confirm parcel size and customs
+ * value" step — only ever supplied for a UPS shipment leaving the UK.
+ * customsValueMinor is optional since a packer might only need to correct
+ * the dimensions. */
+export type PackOverrides = {
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+  customsValueMinor?: number;
+};
+
 export async function packOrder(
   orderId: string,
-  carrier: PackCarrier
-): Promise<{ ok: true; labelWarning?: string } | { ok: false; error: string }> {
+  carrier: PackCarrier,
+  overrides?: PackOverrides
+): Promise<
+  | { ok: true; labelWarning?: string; labelUrl?: string; trackingNumber?: string }
+  | { ok: false; error: string }
+> {
   const session = await getServerSession(authOptions);
   if (!session || !["ADMIN", "PACKER"].includes(session.user.role)) {
     return { ok: false, error: "Not authorised" };
@@ -140,9 +176,16 @@ export async function packOrder(
         labelUrl = label.labelUrl ?? (label.labelBase64 ? `data:application/pdf;base64,${label.labelBase64}` : undefined);
       } else {
         const shipFrom = getStoreAddress();
-        const dims = getPackageDimensionsCm(order);
-        const customs = getCustomsSummary(order, shipFrom.countryCode);
-        const pkg = { weightGrams: customs.totalWeightGrams, ...dims };
+        // A packer can confirm/correct the parcel size and declared customs
+        // value on the packing screen before a label is created (only shown
+        // for shipments leaving the UK) — use those figures when given,
+        // otherwise fall back to what's calculated from the order's items.
+        const dims = overrides
+          ? { lengthCm: overrides.lengthCm, widthCm: overrides.widthCm, heightCm: overrides.heightCm }
+          : getPackageDimensionsCm(order);
+        const rawCustoms = getCustomsSummary(order, shipFrom.countryCode);
+        const customs = withCustomsValueOverride(rawCustoms, overrides?.customsValueMinor);
+        const pkg = { weightGrams: rawCustoms.totalWeightGrams, ...dims };
 
         // International shipments need customs paperwork attached
         // electronically ("paperless") — generate the commercial invoice and
@@ -153,7 +196,7 @@ export async function packOrder(
         let invoiceDocumentId: string | undefined;
         if (needsCustoms(shipTo.countryCode)) {
           try {
-            const pdf = await buildCommercialInvoicePdf({ order, shipFrom, shipTo });
+            const pdf = await buildCommercialInvoicePdf({ order, shipFrom, shipTo, customs });
             invoiceDocumentId = await uploadPaperlessInvoice({
               pdfBase64: pdf.toString("base64"),
               reference: order.orderNumber,
@@ -170,7 +213,15 @@ export async function packOrder(
           customs: needsCustoms(shipTo.countryCode) ? { items: customs.lines, invoiceDocumentId } : undefined,
         });
         trackingNumber = label.trackingNumber;
-        labelUrl = label.labelUrl ?? (label.labelBase64 ? `data:application/pdf;base64,${label.labelBase64}` : undefined);
+        // UPS labels are requested as GIF (see src/lib/integrations/ups.ts)
+        // so they print through any printer's normal driver — Royal Mail's
+        // labelBase64 case never happens in practice (it returns a hosted
+        // labelUrl instead) but is kept as a PDF fallback just in case.
+        labelUrl =
+          label.labelUrl ??
+          (label.labelBase64
+            ? `data:${label.labelFormat === "GIF" ? "image/gif" : "application/pdf"};base64,${label.labelBase64}`
+            : undefined);
       }
     } catch (err) {
       // Label creation failing shouldn't block packing — staff can generate
@@ -211,5 +262,5 @@ export async function packOrder(
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
 
-  return { ok: true, labelWarning };
+  return { ok: true, labelWarning, labelUrl, trackingNumber };
 }

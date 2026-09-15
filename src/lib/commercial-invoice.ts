@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import type { Order, OrderItem, Print } from "@prisma/client";
 import { formatMinor } from "@/lib/money";
 import { countryName } from "@/lib/countries";
-import { getCustomsSummary } from "@/lib/customs";
+import { getCustomsSummary, type CustomsSummary } from "@/lib/customs";
 import type { ShippingAddress } from "@/lib/integrations/ups";
 
 /**
@@ -27,9 +27,16 @@ export async function buildCommercialInvoicePdf(params: {
   order: OrderWithItems;
   shipFrom: ShippingAddress;
   shipTo: ShippingAddress;
+  /** Pass the packer-confirmed customs summary (see
+   * src/lib/customs.ts's withCustomsValueOverride) so the printed invoice
+   * matches what's actually declared on the shipment. Falls back to
+   * computing it fresh from the order's items when omitted, e.g. when this
+   * is downloaded standalone from the order page rather than during
+   * packing. */
+  customs?: CustomsSummary;
 }): Promise<Buffer> {
   const { order, shipFrom, shipTo } = params;
-  const customs = getCustomsSummary(order, shipFrom.countryCode);
+  const customs = params.customs ?? getCustomsSummary(order, shipFrom.countryCode);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 50 });

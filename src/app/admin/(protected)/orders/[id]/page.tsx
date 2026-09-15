@@ -4,6 +4,7 @@ import { formatMinor } from "@/lib/money";
 import { CourierStatusEditor } from "@/components/admin/CourierStatusEditor";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { ManualOrderPanel } from "@/components/admin/ManualOrderPanel";
+import { ShippingLabelPreview } from "@/components/admin/ShippingLabelPreview";
 
 export const dynamic = "force-dynamic";
 
@@ -76,9 +77,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             <p className="text-stone">Not yet captured</p>
           )}
           {order.trackingNumber && (
-            <p className="mt-1">
-              Tracking: {order.trackingNumber} ({order.shippingCarrier})
-            </p>
+            <div className="mt-1">
+              <ShippingLabelPreview
+                labelUrl={order.labelUrl}
+                trackingNumber={order.trackingNumber}
+                carrier={order.shippingCarrier}
+              />
+            </div>
           )}
           {address && (
             <a

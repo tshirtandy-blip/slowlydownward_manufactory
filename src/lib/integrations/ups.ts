@@ -72,6 +72,13 @@ export type CreatedLabel = {
   trackingNumber: string;
   labelUrl?: string;
   labelBase64?: string;
+  /** The image format labelBase64 is encoded in — only meaningful when
+   * labelBase64 is set (Royal Mail returns a hosted labelUrl instead, never
+   * this). UPS labels are requested as GIF (see createUpsShipment) since a
+   * plain raster image prints correctly through any printer's normal OS
+   * driver — including a USB thermal label printer — with no need for a
+   * printer-specific command language like ZPL/EPL. */
+  labelFormat?: "GIF" | "PDF";
   carrier: "UPS" | "ROYAL_MAIL";
 };
 
@@ -150,6 +157,13 @@ export async function uploadPaperlessInvoice(params: {
  * uploadPaperlessInvoice above) so UPS's international customs forms are
  * attached electronically rather than needing a printed invoice in the
  * parcel. Omit both for a UK domestic shipment, which needs neither.
+ *
+ * Every UPS label — domestic or international — requests a signature on
+ * delivery (DeliveryConfirmation DCISType "1"), store policy for every UPS
+ * parcel regardless of value or destination, and is sized/formatted for a
+ * 4x6" thermal label (LabelStockSize + GIF image format) rather than a
+ * full sheet — see the LabelSpecification note on labelFormat above for
+ * why GIF specifically.
  */
 export async function createUpsShipment(params: {
   shipTo: ShippingAddress;
@@ -176,44 +190,58 @@ export async function createUpsShipment(params: {
     },
     ReferenceNumber: [{ Value: params.reference }],
     Package: [{ Packaging: { Code: "02" }, ...packageBlock(params.package) }],
+    // Signature required on delivery, every UPS parcel — company policy
+    // regardless of destination or value. DCISType "1" is plain signature
+    // required (as opposed to "2", adult signature required, which this
+    // store doesn't need).
+    ShipmentServiceOptions: {
+      DeliveryConfirmation: { DCISType: "1" },
+    },
   };
 
   if (params.customs) {
-    shipment.ShipmentServiceOptions = {
-      InternationalForms: {
-        FormType: "01", // Invoice
-        InvoiceNumber: params.reference,
-        InvoiceDate: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
-        ReasonForExport: "SALE",
-        CurrencyCode: "GBP",
-        Product: params.customs.items.map((item) => ({
-          Description: item.description,
-          CommodityCode: item.hsCode,
-          OriginCountryCode: item.originCountryCode,
-          Unit: {
-            Number: String(item.quantity),
-            UnitOfMeasurement: { Code: "PCS" },
-            Value: (item.unitValueMinor / 100).toFixed(2),
-          },
-        })),
-        // Referencing an already-uploaded invoice (see uploadPaperlessInvoice)
-        // is what makes this "paperless" — no printed copy needs to travel
-        // with the parcel. Falls back to letting UPS generate its own basic
-        // form from the data above if no document was uploaded.
-        ...(params.customs.invoiceDocumentId
-          ? {
-              AdditionalDocumentIndicator: "1",
-              FormsHistoryDocumentID: params.customs.invoiceDocumentId,
-            }
-          : {}),
-      },
+    shipment.ShipmentServiceOptions.InternationalForms = {
+      FormType: "01", // Invoice
+      InvoiceNumber: params.reference,
+      InvoiceDate: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
+      ReasonForExport: "SALE",
+      CurrencyCode: "GBP",
+      Product: params.customs.items.map((item) => ({
+        Description: item.description,
+        CommodityCode: item.hsCode,
+        OriginCountryCode: item.originCountryCode,
+        Unit: {
+          Number: String(item.quantity),
+          UnitOfMeasurement: { Code: "PCS" },
+          Value: (item.unitValueMinor / 100).toFixed(2),
+        },
+      })),
+      // Referencing an already-uploaded invoice (see uploadPaperlessInvoice)
+      // is what makes this "paperless" — no printed copy needs to travel
+      // with the parcel. Falls back to letting UPS generate its own basic
+      // form from the data above if no document was uploaded.
+      ...(params.customs.invoiceDocumentId
+        ? {
+            AdditionalDocumentIndicator: "1",
+            FormsHistoryDocumentID: params.customs.invoiceDocumentId,
+          }
+        : {}),
     };
   }
 
   const payload = {
     ShipmentRequest: {
       Shipment: shipment,
-      LabelSpecification: { LabelImageFormat: { Code: "PDF" } },
+      // GIF at 4x6" — a plain raster image that prints correctly through
+      // any printer's normal OS driver (a USB thermal label printer
+      // included), rather than a thermal-specific command language like
+      // ZPL/EPL that not every printer model understands the same way.
+      // UPS only ever scales an image DOWN to fit LabelStockSize, never up,
+      // so this is the actual printed size, not just a hint.
+      LabelSpecification: {
+        LabelImageFormat: { Code: "GIF" },
+        LabelStockSize: { Height: "6", Width: "4" },
+      },
     },
   };
 
@@ -235,6 +263,7 @@ export async function createUpsShipment(params: {
   return {
     trackingNumber: result.ShipmentIdentificationNumber,
     labelBase64: result.PackageResults?.[0]?.ShippingLabel?.GraphicImage,
+    labelFormat: "GIF" as const,
     carrier: "UPS" as const,
   };
 }

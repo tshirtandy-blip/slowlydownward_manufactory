@@ -70,6 +70,10 @@ export default async function PackPage() {
               royalMailError={costs[i].royalMailError}
               ups={costs[i].ups}
               upsError={costs[i].upsError}
+              currency={order.currency}
+              requiresCustoms={costs[i].requiresCustoms}
+              defaultDims={costs[i].defaultDims}
+              defaultCustomsValueMinor={costs[i].defaultCustomsValueMinor}
             />
           </div>
         ))}
