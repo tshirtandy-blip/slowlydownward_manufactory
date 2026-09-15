@@ -164,7 +164,15 @@ export function SiteHeader() {
           since translating the header up by its own (too-short) height
           didn't clear content that had been hanging outside that height. */}
       <div className="mx-auto max-w-6xl px-6 py-9 grid grid-cols-3 items-center">
-        <div className="flex items-center">{settings.logoPosition === "LEFT" && <Logo settings={settings} />}</div>
+        {/* The currency selector lives in this left-hand column regardless
+            of where the logo is positioned, so it always sits flush with
+            the left edge — the same distance in as the cart icon is from
+            the right edge — instead of getting pulled in next to a
+            centred or right-aligned logo. */}
+        <div className="flex items-center gap-4">
+          {settings.logoPosition === "LEFT" && <Logo settings={settings} />}
+          {settings.showCurrencySelector && <CurrencySelector />}
+        </div>
 
         <div className="flex items-center justify-center">
           {settings.logoPosition === "CENTER" && <Logo settings={settings} />}
@@ -172,7 +180,6 @@ export function SiteHeader() {
 
         <div className="flex items-center justify-end gap-6">
           {settings.logoPosition === "RIGHT" && <Logo settings={settings} />}
-          {settings.showCurrencySelector && <CurrencySelector />}
           {settings.showAccountIcon && <AccountIcon customUrl={settings.accountIconUrl} />}
           {settings.showCartIcon && <CartIcon customUrl={settings.cartIconUrl} count={count} />}
         </div>
