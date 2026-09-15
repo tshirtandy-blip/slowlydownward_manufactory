@@ -225,11 +225,31 @@ async function packOrderUnsafe(
           }
         }
 
+        // UPS requires exactly one named service on the actual shipment
+        // (error 9120115, "Missing service information") — resolved fresh
+        // here via the same rate-lookup used for the packing screen's
+        // quote, rather than a hardcoded guess, so it's guaranteed to be a
+        // service this account can actually use for this route. Falls back
+        // to a sensible default only if that lookup itself fails, so a
+        // rating hiccup doesn't block packing entirely.
+        let serviceCode: string;
+        try {
+          const rate = await getUpsRate({ shipFrom, shipTo, package: pkg });
+          serviceCode = rate.serviceCode;
+        } catch {
+          // "11" (UPS Standard) covers the UK and intra-Europe; "65" (UPS
+          // Worldwide Saver) is a widely available service for everywhere
+          // else — reasonable fallbacks if the live lookup is unavailable.
+          const europeanish = ["GB", "IE", "FR", "DE", "ES", "IT", "NL", "BE", "PT", "AT", "DK", "SE", "FI", "PL"];
+          serviceCode = europeanish.includes(shipTo.countryCode.toUpperCase()) ? "11" : "65";
+        }
+
         const label = await createUpsShipment({
           shipFrom,
           shipTo,
           reference: order.orderNumber,
           package: pkg,
+          serviceCode,
           customs: needsCustoms(shipTo.countryCode) ? { items: customs.lines, invoiceDocumentId } : undefined,
         });
         trackingNumber = label.trackingNumber;

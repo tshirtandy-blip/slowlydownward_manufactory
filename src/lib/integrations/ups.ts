@@ -170,6 +170,13 @@ export async function createUpsShipment(params: {
   shipTo: ShippingAddress;
   reference: string; // e.g. order number
   package: PackageDetails;
+  /** Which UPS service to actually ship with (e.g. "11" = UPS Standard,
+   * "65" = UPS Worldwide Saver) — UPS rejects a shipment with none at all
+   * ("Missing service information", error 9120115). Resolve this from a
+   * live getUpsRate call for the same route right before calling this, so
+   * it's guaranteed to be a service UPS will actually accept for this
+   * account and address pair, rather than a hardcoded guess. */
+  serviceCode: string;
   customs?: { items: CustomsItem[]; invoiceDocumentId?: string };
 }): Promise<CreatedLabel> {
   const token = await getAccessToken();
@@ -200,6 +207,7 @@ export async function createUpsShipment(params: {
       },
     },
     ReferenceNumber: [{ Value: params.reference }],
+    Service: { Code: params.serviceCode },
     Package: [{ Packaging: { Code: "02" }, ...packageBlock(params.package) }],
     // Signature required on delivery, every UPS parcel — company policy
     // regardless of destination or value. DCISType "1" is plain signature
@@ -292,7 +300,7 @@ export async function createUpsShipment(params: {
   };
 }
 
-export type RateQuote = { amountMinor: number; currency: string; service: string };
+export type RateQuote = { amountMinor: number; currency: string; service: string; serviceCode: string };
 
 /**
  * Live rate quote via UPS's Rating API (a separate endpoint from Shipping
@@ -372,6 +380,7 @@ export async function getUpsRate(params: {
     amountMinor: Math.round(amountFor(cheapest) * 100),
     currency: cheapest.NegotiatedRateCharges?.TotalCharge?.CurrencyCode ?? cheapest.TotalCharges.CurrencyCode ?? "GBP",
     service: cheapest.Service?.Description ?? `Service ${cheapest.Service?.Code ?? ""}`.trim(),
+    serviceCode: cheapest.Service?.Code,
   };
 }
 
