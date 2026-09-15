@@ -166,6 +166,7 @@ export async function uploadPaperlessInvoice(params: {
  * why GIF specifically.
  */
 export async function createUpsShipment(params: {
+  shipFrom: ShippingAddress;
   shipTo: ShippingAddress;
   reference: string; // e.g. order number
   package: PackageDetails;
@@ -173,11 +174,21 @@ export async function createUpsShipment(params: {
 }): Promise<CreatedLabel> {
   const token = await getAccessToken();
 
+  // UPS's own error for a Shipper with no Address block is just "Missing
+  // shipper address information" (code 9120006) — easy to miss that it
+  // means the FROM address, not the recipient's. Shipper needs the full
+  // address, not just a name and account number.
   const shipment: any = {
     Description: "Limited edition art print",
     Shipper: {
-      Name: "Slowly Downward",
+      Name: params.shipFrom.name,
       ShipperNumber: process.env.UPS_ACCOUNT_NUMBER,
+      Address: {
+        AddressLine: [params.shipFrom.line1, params.shipFrom.line2].filter(Boolean),
+        City: params.shipFrom.city,
+        PostalCode: params.shipFrom.postalCode,
+        CountryCode: params.shipFrom.countryCode,
+      },
     },
     ShipTo: {
       Name: params.shipTo.name,

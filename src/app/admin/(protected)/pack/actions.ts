@@ -226,6 +226,7 @@ async function packOrderUnsafe(
         }
 
         const label = await createUpsShipment({
+          shipFrom,
           shipTo,
           reference: order.orderNumber,
           package: pkg,
