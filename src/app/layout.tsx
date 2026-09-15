@@ -10,6 +10,7 @@ import { getExchangeRates } from "@/lib/currency";
 import { detectCurrencyFromRequest } from "@/lib/currency-server";
 import { fontStackFor, fontFaceCssFor } from "@/lib/fonts";
 import { getCustomFonts } from "@/lib/custom-fonts";
+import { CookieConsentPopup } from "@/components/storefront/CookieConsentPopup";
 
 export const metadata: Metadata = {
   title: "Slowly Downward — Limited edition prints by Stanley Donwood",
@@ -50,6 +51,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {children}
               </CurrencyProvider>
             </HeaderSettingsProvider>
+            <CookieConsentPopup
+              settings={{
+                cookiePopupEnabled: settings.cookiePopupEnabled,
+                cookiePopupMessage: settings.cookiePopupMessage,
+                cookiePopupSignupHeading: settings.cookiePopupSignupHeading,
+                cookiePopupSignupBody: settings.cookiePopupSignupBody,
+              }}
+            />
           </CartProvider>
         </AuthSessionProvider>
       </body>

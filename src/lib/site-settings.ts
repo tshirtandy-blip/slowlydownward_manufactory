@@ -30,6 +30,13 @@ const DEFAULTS = {
   editionPickerNote:
     "Choosing a number holds it for you for a short time — complete checkout before it runs out, or it's released back to general availability.",
   emailLogoUrl: null as string | null,
+  cookiePopupEnabled: true,
+  cookiePopupMessage:
+    "We use a few essential cookies to keep the site and your basket working. Nothing beyond that.",
+  cookiePopupSignupHeading: "Hear about new releases",
+  cookiePopupSignupBody:
+    "Leave your email if you'd like to know when a new print goes live, before it's announced anywhere else.",
+  withdrawalPeriodDays: 14,
 };
 
 export async function getSiteSettings() {

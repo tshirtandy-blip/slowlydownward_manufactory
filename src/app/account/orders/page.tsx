@@ -7,6 +7,10 @@ import { SiteFooter } from "@/components/storefront/SiteFooter";
 import { getFooterProps } from "@/lib/footer";
 import { AccountNav } from "@/components/account/AccountNav";
 import { formatMinor } from "@/lib/money";
+import { getSiteSettings } from "@/lib/site-settings";
+import { OrderWithdrawalAction } from "./OrderWithdrawalAction";
+
+const NOT_WITHDRAWABLE_STATUSES = new Set(["PENDING_PAYMENT", "CANCELLED", "REFUNDED"]);
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +29,15 @@ export default async function OrderHistoryPage() {
   const customer = session?.user && (session.user as any).role === "CUSTOMER" ? session.user : null;
   if (!customer) redirect("/account/login");
 
-  const footer = await getFooterProps();
-  const orders = await prisma.order.findMany({
-    where: { customerId: (customer as any).id },
-    include: { items: { include: { print: true, edition: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [footer, settings, orders] = await Promise.all([
+    getFooterProps(),
+    getSiteSettings(),
+    prisma.order.findMany({
+      where: { customerId: (customer as any).id },
+      include: { items: { include: { print: true, edition: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <>
@@ -78,6 +85,27 @@ export default async function OrderHistoryPage() {
                   </p>
                   <p className="font-medium">Total: {formatMinor(order.totalMinor, order.currency)}</p>
                 </div>
+                {order.withdrawnAt ? (
+                  <p className="text-xs text-stone mt-3">
+                    Withdrawal requested{" "}
+                    {order.withdrawnAt.toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })}
+                    .
+                  </p>
+                ) : (
+                  !NOT_WITHDRAWABLE_STATUSES.has(order.status) && (
+                    <OrderWithdrawalAction
+                      orderId={order.id}
+                      orderNumber={order.orderNumber}
+                      placedOn={order.createdAt.toLocaleDateString("en-GB", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                      totalFormatted={formatMinor(order.totalMinor, order.currency)}
+                      withdrawalPeriodDays={settings.withdrawalPeriodDays}
+                    />
+                  )
+                )}
               </div>
             ))}
           </div>

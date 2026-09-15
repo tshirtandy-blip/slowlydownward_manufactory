@@ -135,6 +135,24 @@ model SiteSettings {
   // template's own wording.
   emailLogoUrl String?
 
+  // The first-visit cookie notice + email signup popup (Admin > Settings >
+  // Legal & popup) — see src/components/storefront/CookieConsentPopup.tsx.
+  // Purely a notice/preference-capture UI: the site currently sets no
+  // non-essential cookies of its own, so there's nothing to actually gate
+  // behind acceptance yet.
+  cookiePopupEnabled       Boolean @default(true)
+  cookiePopupMessage       String  @default("We use a few essential cookies to keep the site and your basket working. Nothing beyond that.")
+  cookiePopupSignupHeading String  @default("Hear about new releases")
+  cookiePopupSignupBody    String  @default("Leave your email if you'd like to know when a new print goes live, before it's announced anywhere else.")
+
+  // How many days after delivery a customer's "Withdraw from contract"
+  // button (Admin > Settings > Legal & popup, src/app/account/orders)
+  // says they're entitled to cancel for — shown as a note next to the
+  // button, purely informational. The button itself stays available
+  // regardless, since EU law penalises wrongly hiding it far more than it
+  // penalises leaving it up a little long.
+  withdrawalPeriodDays Int @default(14)
+
   updatedAt            DateTime    @updatedAt
 }
 
@@ -159,6 +177,11 @@ model Customer {
   lastName       String?
   phone          String?
   marketingOptIn Boolean  @default(false)
+  // Set (or refreshed) the moment marketingOptIn last became true — from
+  // the cookie/email popup, the footer signup form, or the account
+  // settings checkbox. Kept as evidence of consent (when + that it
+  // happened), not shown anywhere in the UI.
+  marketingConsentAt DateTime?
   mailchimpId    String?
   xeroContactId  String?
   // Null for a customer who has only ever checked out as a guest — set the
@@ -482,6 +505,16 @@ model Order {
   mailchimpSynced  Boolean @default(false)
 
   customerNote String? // e.g. "please send edition #12 if available"
+
+  // Set the moment a customer uses the "Withdraw from contract" button on
+  // their order history page (EU Consumer Rights Directive withdrawal
+  // right — see src/app/account/orders/actions.ts). No reason is required
+  // by law, so withdrawalReason is just whatever optional note they left,
+  // for staff's own context. This never changes `status` or touches
+  // stock/refunds automatically — staff still process the actual refund
+  // and mark the order REFUNDED themselves once it's sorted out.
+  withdrawnAt      DateTime?
+  withdrawalReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

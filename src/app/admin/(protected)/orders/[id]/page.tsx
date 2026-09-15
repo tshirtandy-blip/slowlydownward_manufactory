@@ -53,6 +53,21 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         </p>
       )}
 
+      {order.withdrawnAt && (
+        <div className="border border-accent p-4 mb-6">
+          <p className="text-sm font-medium text-accent mb-1">Customer requested to withdraw from this order</p>
+          <p className="text-xs text-stone">
+            Requested{" "}
+            {order.withdrawnAt.toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })} — their right to
+            cancel, no reason required. Arrange the return and refund, then update this order's status once it's
+            sorted.
+          </p>
+          {order.withdrawalReason && (
+            <p className="text-xs text-stone mt-2">Note from customer: "{order.withdrawalReason}"</p>
+          )}
+        </div>
+      )}
+
       {order.source === "MANUAL" && (
         <ManualOrderPanel
           orderId={order.id}

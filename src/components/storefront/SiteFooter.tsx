@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { FooterLinkItem } from "@/lib/footer";
+import { NewsletterSignupForm } from "@/components/storefront/NewsletterSignupForm";
 
 export type FooterSettings = {
   footerColumn1Heading: string;
@@ -28,16 +29,7 @@ export function SiteFooter({ settings, links }: { settings: FooterSettings; link
         <div>
           <h3 className="label-caps mb-4">{settings.footerColumn2Heading}</h3>
           <p className="text-sm text-stone mb-4 whitespace-pre-line">{settings.footerColumn2Body}</p>
-          <form className="flex gap-2">
-            <input
-              type="email"
-              placeholder="Email address"
-              className="flex-1 border hairline bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-ink"
-            />
-            <button type="submit" className="btn-secondary !px-4 !py-2">
-              Join
-            </button>
-          </form>
+          <NewsletterSignupForm />
         </div>
         <div>
           <h3 className="label-caps mb-4">{settings.footerLinksHeading}</h3>

@@ -54,6 +54,11 @@ export default async function OrdersPage() {
                   {order.source === "MANUAL" && (
                     <span className="label-caps text-stone ml-2 border hairline px-1.5 py-0.5">Manual</span>
                   )}
+                  {order.withdrawnAt && (
+                    <span className="label-caps text-accent ml-2 border border-accent px-1.5 py-0.5">
+                      Withdrawal requested
+                    </span>
+                  )}
                 </td>
                 <td className="p-3">{order.customer.email}</td>
                 <td className="p-3">{order.items.length}</td>

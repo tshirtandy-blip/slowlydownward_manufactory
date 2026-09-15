@@ -13,9 +13,14 @@ import { getSiteSettings } from "@/lib/site-settings";
  * with real values (and HTML-escaped) at send time.
  */
 
-export type EmailTemplateKey = "PAYMENT_LINK" | "ORDER_CONFIRMATION" | "WELCOME";
+export type EmailTemplateKey = "PAYMENT_LINK" | "ORDER_CONFIRMATION" | "WELCOME" | "WITHDRAWAL_CONFIRMATION";
 
-export const EMAIL_TEMPLATE_KEYS: EmailTemplateKey[] = ["PAYMENT_LINK", "ORDER_CONFIRMATION", "WELCOME"];
+export const EMAIL_TEMPLATE_KEYS: EmailTemplateKey[] = [
+  "PAYMENT_LINK",
+  "ORDER_CONFIRMATION",
+  "WELCOME",
+  "WITHDRAWAL_CONFIRMATION",
+];
 
 type TemplateInfo = {
   label: string;
@@ -62,6 +67,17 @@ export const EMAIL_TEMPLATE_INFO: Record<EmailTemplateKey, TemplateInfo> = {
     defaultIntroHtml:
       "<p>Hi {{customerName}},</p><p>Your account is all set up. You'll find your order history and collection waiting for you any time you sign in.</p>",
     defaultClosingHtml: "",
+  },
+  WITHDRAWAL_CONFIRMATION: {
+    label: "Withdrawal / right-to-cancel confirmation",
+    description:
+      "Sent the moment a customer uses the \"Withdraw from contract\" button on one of their orders (Your Account > Order history). This is the dated receipt required by law, so the statement box and item list below your message are always included and can't be turned off.",
+    variables: [{ token: "{{orderNumber}}", description: "Order number, e.g. SD26-4821" }],
+    hasClosing: true,
+    defaultSubject: "We've received your withdrawal request — {{orderNumber}} — Slowly Downward",
+    defaultIntroHtml:
+      "<p>Hello,</p><p>This confirms we've received your request to withdraw from the contract for the order below. No reason is required under your right to cancel, and none was taken.</p>",
+    defaultClosingHtml: "<p>We'll be in touch shortly about returning the item(s) and your refund.</p>",
   },
 };
 
@@ -224,6 +240,47 @@ export async function renderWelcomeEmail(params: { customerName: string }): Prom
   return { subject: fillTokens(template.subject, vars), html };
 }
 
+/** The legally-required durable-medium receipt for a withdrawal request
+ * (EU Consumer Rights Directive's "withdrawal button" amendment) — the
+ * statement box's order number and received-at timestamp are always
+ * included verbatim and aren't part of the editable template, since that
+ * content is exactly what the law requires the receipt to contain. */
+export async function renderWithdrawalConfirmationEmail(params: {
+  orderNumber: string;
+  requestedAt: Date;
+  items: OrderItemLine[];
+  totalMinor: number;
+  currency: string;
+}): Promise<{ subject: string; html: string }> {
+  const [template, settings] = await Promise.all([getEmailTemplate("WITHDRAWAL_CONFIRMATION"), getSiteSettings()]);
+  const vars = { orderNumber: params.orderNumber };
+  const receivedAt = params.requestedAt.toLocaleString("en-GB", {
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+  const statementHtml = `
+    <table style="width:100%;border-collapse:collapse;margin:24px 0;font-size:13px;border:1px solid #e5e0d8;">
+      <tr><td style="padding:14px;">
+        <p style="margin:0 0 8px;font-weight:bold;">Withdrawal statement received</p>
+        <p style="margin:0 0 4px;">Order: ${escapeHtml(params.orderNumber)}</p>
+        <p style="margin:0;">Received: ${escapeHtml(receivedAt)}</p>
+      </td></tr>
+    </table>`;
+  const html =
+    WRAPPER_OPEN +
+    emailHeaderHtml(settings.emailLogoUrl) +
+    fillTokens(template.introHtml, vars) +
+    statementHtml +
+    itemsTableHtml(params.items) +
+    `<p style="font-size:12px;color:#6b6558;margin-top:16px;">Order total: ${formatMinor(
+      params.totalMinor,
+      params.currency
+    )}.</p>` +
+    fillTokens(template.closingHtml, vars) +
+    WRAPPER_CLOSE;
+  return { subject: fillTokens(template.subject, vars), html };
+}
+
 /** Sample data for the "send yourself a test" button on each template's
  * edit page — never touches real orders/customers. */
 export async function renderSampleEmail(key: EmailTemplateKey): Promise<{ subject: string; html: string }> {
@@ -254,5 +311,13 @@ export async function renderSampleEmail(key: EmailTemplateKey): Promise<{ subjec
       });
     case "WELCOME":
       return renderWelcomeEmail({ customerName: "Jamie" });
+    case "WITHDRAWAL_CONFIRMATION":
+      return renderWithdrawalConfirmationEmail({
+        orderNumber: "SD26-1234",
+        requestedAt: new Date(),
+        items: sampleItems,
+        totalMinor: 27300,
+        currency: "GBP",
+      });
   }
 }

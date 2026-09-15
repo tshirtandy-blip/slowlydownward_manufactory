@@ -23,7 +23,8 @@ export function FooterContentForm({ settings }: { settings: FooterSettings }) {
           <label className="label-caps block mb-2">Column 2 text</label>
           <textarea name="footerColumn2Body" defaultValue={settings.footerColumn2Body} className={textareaClass} />
           <p className="text-xs text-stone mt-2">
-            The email signup form below this text isn't wired up to a mailing list yet — it's a placeholder.
+            The email signup form below this text adds people to your Mailchimp audience (Admin &gt; Settings &gt;
+            Integrations) and marks them as marketing opt-in.
           </p>
         </div>
       </div>
