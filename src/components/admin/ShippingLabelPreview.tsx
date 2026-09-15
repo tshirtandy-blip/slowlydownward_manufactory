@@ -28,12 +28,19 @@ export function ShippingLabelPreview({
     // way any printer's own driver handles the actual printing, so it
     // works with the shop's USB thermal printer or any other model without
     // needing printer-specific label software.
+    //
+    // The image is constrained with max-width/max-height rather than a
+    // fixed width+height — UPS's label GIF isn't guaranteed to come back
+    // in an exact 4:6 pixel ratio (it's scaled DOWN to fit that box, not
+    // stretched to fill it), so forcing both dimensions distorted/squished
+    // it. This scales it to fit the 4x6 area instead, preserving its own
+    // proportions, and centers it on the page.
     const win = window.open("", "_blank", "width=420,height=650");
     if (!win || !labelUrl) return;
     win.document.write(
       `<!DOCTYPE html><html><head><title>Shipping label${
         trackingNumber ? ` — ${trackingNumber}` : ""
-      }</title><style>@page{size:4in 6in;margin:0;}html,body{margin:0;padding:0;}img{width:4in;height:6in;display:block;}</style></head><body><img src="${labelUrl}" onload="window.focus();window.print();" /></body></html>`
+      }</title><style>@page{size:4in 6in;margin:0;}html,body{margin:0;padding:0;height:100%;}body{display:flex;align-items:center;justify-content:center;}img{max-width:4in;max-height:6in;width:auto;height:auto;display:block;}</style></head><body><img src="${labelUrl}" onload="window.focus();window.print();" /></body></html>`
     );
     win.document.close();
   }
