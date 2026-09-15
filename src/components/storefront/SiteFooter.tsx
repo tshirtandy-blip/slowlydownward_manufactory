@@ -19,8 +19,13 @@ export type FooterSettings = {
 // values passed down from its own server-rendered parent instead. Every
 // piece of text here is editable from Admin > Settings > Footer.
 export function SiteFooter({ settings, links }: { settings: FooterSettings; links: FooterLinkItem[] }) {
+  // A light buffer on top of whatever bottom padding the page's own last
+  // section already has (every content block already ends with its own
+  // py-8 to py-16) — this used to be mt-24 on top of that, which is what
+  // made the gap above the footer look far bigger than the gaps between
+  // any other two sections on the page.
   return (
-    <footer id="archive" className="mt-24">
+    <footer id="archive" className="mt-8">
       <div className="mx-auto max-w-6xl px-6 py-16 grid grid-cols-1 md:grid-cols-3 gap-12">
         <div>
           <h3 className="label-caps mb-4">{settings.footerColumn1Heading}</h3>
