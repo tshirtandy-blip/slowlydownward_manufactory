@@ -5,11 +5,55 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Brand tokens (unchanged — used throughout the storefront + admin)
         paper: "#ffffff",
         ink: "#1a1a18",
         stone: "#8c887e",
         line: "#dedad0",
-        accent: "#7a2e2e",
+
+        // shadcn/ui semantic tokens, mapped onto the same brand palette
+        // (cssVariables: false in components.json — these resolve directly,
+        // no CSS custom properties / dark-mode indirection needed)
+        background: "#ffffff",
+        foreground: "#1a1a18",
+        border: "#dedad0",
+        input: "#dedad0",
+        ring: "#7a2e2e",
+        primary: {
+          DEFAULT: "#1a1a18",
+          foreground: "#ffffff",
+        },
+        secondary: {
+          DEFAULT: "#f5f4f0",
+          foreground: "#1a1a18",
+        },
+        muted: {
+          DEFAULT: "#f5f4f0",
+          foreground: "#8c887e",
+        },
+        accent: {
+          DEFAULT: "#7a2e2e",
+          foreground: "#ffffff",
+        },
+        destructive: {
+          DEFAULT: "#b3261e",
+          foreground: "#ffffff",
+        },
+        card: {
+          DEFAULT: "#ffffff",
+          foreground: "#1a1a18",
+        },
+        popover: {
+          DEFAULT: "#ffffff",
+          foreground: "#1a1a18",
+        },
+      },
+      // Sharp corners throughout, matching the existing hairline/editorial look —
+      // shadcn components use rounded-lg/md/sm classes, all pinned to 0 here.
+      borderRadius: {
+        lg: "0px",
+        md: "0px",
+        sm: "0px",
       },
       fontFamily: {
         // These resolve via CSS custom properties set in the root layout
@@ -24,7 +68,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;
