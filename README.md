@@ -330,6 +330,39 @@ notification emails are a separate, later piece of work.
 2. Set `MAILCHIMP_API_KEY` and `MAILCHIMP_AUDIENCE_ID`.
 3. Every customer is synced (added or updated) after a successful order —
    see `src/lib/integrations/mailchimp.ts`.
+4. Being phased out — Admin > Campaigns (Resend Broadcasts, below) now
+   covers the campaign-sending half of what Mailchimp was used for. This
+   sync can be removed once you're confident you don't need it as a
+   fallback any more.
+
+### Resend Broadcasts (campaigns)
+
+Powers **Admin > Campaigns** — composing and sending a newsletter/marketing
+email, as a replacement for Mailchimp's campaign feature. Uses the same
+`RESEND_API_KEY` / `RESEND_FROM_EMAIL` as transactional email above; nothing
+extra to sign up for.
+
+1. Nothing to configure to start composing and sending — the two audiences
+   ("everyone opted in" and "customers") are created automatically the
+   first time they're needed (see `getMarketingSegments` in
+   `src/lib/integrations/resend-broadcasts.ts`) and kept in sync as people
+   subscribe to the newsletter or place an order.
+2. For opens/clicks to show up on a sent campaign, and for a hard bounce or
+   spam complaint to automatically turn off that address's marketing email
+   (the "auto cleaning" Mailchimp did for you) — once the site has a real
+   URL, go to [Resend → Webhooks](https://resend.com/webhooks), add an
+   endpoint at `https://<your-vercel-url>/api/webhooks/resend`, subscribe it
+   to at least `email.opened`, `email.clicked`, `email.bounced` and
+   `email.complained`, copy its signing secret, and set it as
+   `RESEND_WEBHOOK_SECRET` in Vercel's Environment Variables (then redeploy).
+   Campaigns can be composed and sent without this step — you'd just have no
+   opens/clicks numbers and no automatic bounce cleanup until it's done.
+3. **One-off historical import** — if you're bringing over your existing
+   Mailchimp subscriber list, that's a deliberate bulk backfill (thousands
+   of contacts, rate-limited), not something this app does automatically on
+   every page load. Ask Claude to run it as a one-time job once both API
+   keys are available, or write a small script against
+   `upsertResendContact` yourself.
 
 ### Xero
 
