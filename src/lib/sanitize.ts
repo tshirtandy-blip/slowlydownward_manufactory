@@ -8,7 +8,7 @@ import type { CampaignBlock } from "@/lib/campaignBlocks";
  * storefront pages, viewed by customers — so even though only an Admin can
  * author it, we strip everything outside a small allowlist of formatting
  * tags. That's defence in depth against a compromised admin session being
- * used to plant a stored-XSS payload that would then run in every visitor-s
+ * used to plant a stored-XSS payload that would then run in every visitor's
  * browser.
  */
 export function sanitizeRichText(html: string): string {
