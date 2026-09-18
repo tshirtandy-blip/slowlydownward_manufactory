@@ -71,7 +71,7 @@ export default async function RunReportPage({
             placeholder="Name this report to save it…"
             className="border hairline bg-transparent px-3 py-2 text-sm w-56"
           />
-          <SaveButton className="btn-secondary !px-4 !py-2">Save</SaveButton>
+          <SaveButton>Save</SaveButton>
         </form>
       </div>
 

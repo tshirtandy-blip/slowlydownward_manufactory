@@ -4,14 +4,17 @@ import { royalMailConfigured } from "@/lib/integrations/royalmail";
 import { mailchimpConfigured } from "@/lib/integrations/mailchimp";
 import { xeroConfigured } from "@/lib/integrations/xero";
 import { emailConfigured } from "@/lib/integrations/resend";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
-function StatusPill({ ok }: { ok: boolean }) {
+function StatusBadge({ ok }: { ok: boolean }) {
   return (
-    <span className={`label-caps px-2 py-1 border ${ok ? "border-ink" : "border-line text-stone"}`}>
+    <Badge variant="outline" className={ok ? "border-ink text-ink" : "border-line text-stone"}>
       {ok ? "Connected" : "Not connected"}
-    </span>
+    </Badge>
   );
 }
 
@@ -20,7 +23,7 @@ export default async function IntegrationsPage() {
   const xeroConnected = !!xeroSetting?.enabled;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-4">
       <h1 className="font-display text-2xl mb-2">Integrations</h1>
       <p className="text-stone text-sm mb-8">
         Stripe, UPS, Royal Mail and Mailchimp are configured with API keys as environment
@@ -28,62 +31,75 @@ export default async function IntegrationsPage() {
         OAuth connection instead, which you authorise below.
       </p>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">Stripe</h2>
-          <p className="text-sm text-stone">Payments — required for checkout to work at all.</p>
-        </div>
-        <StatusPill ok={!!process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== "sk_test_placeholder"} />
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">Stripe</h2>
+            <p className="text-sm text-stone">Payments — required for checkout to work at all.</p>
+          </div>
+          <StatusBadge ok={!!process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== "sk_test_placeholder"} />
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">UPS</h2>
-          <p className="text-sm text-stone">International shipping labels, created when an order is packed.</p>
-        </div>
-        <StatusPill ok={upsConfigured()} />
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">UPS</h2>
+            <p className="text-sm text-stone">International shipping labels, created when an order is packed.</p>
+          </div>
+          <StatusBadge ok={upsConfigured()} />
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">Royal Mail (Click &amp; Drop)</h2>
-          <p className="text-sm text-stone">UK shipping labels, created when an order is packed.</p>
-        </div>
-        <StatusPill ok={royalMailConfigured()} />
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">Royal Mail (Click &amp; Drop)</h2>
+            <p className="text-sm text-stone">UK shipping labels, created when an order is packed.</p>
+          </div>
+          <StatusBadge ok={royalMailConfigured()} />
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">Resend (email)</h2>
-          <p className="text-sm text-stone">
-            Sends the payment-link, order confirmation and welcome emails — wording editable under Settings &gt; Emails.
-          </p>
-        </div>
-        <StatusPill ok={emailConfigured()} />
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">Resend (email)</h2>
+            <p className="text-sm text-stone">
+              Sends the payment-link, order confirmation and welcome emails — wording editable under Settings &gt;
+              Emails.
+            </p>
+          </div>
+          <StatusBadge ok={emailConfigured()} />
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">Mailchimp</h2>
-          <p className="text-sm text-stone">Customers are synced to your audience after a successful order.</p>
-        </div>
-        <StatusPill ok={mailchimpConfigured()} />
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">Mailchimp</h2>
+            <p className="text-sm text-stone">Customers are synced to your audience after a successful order.</p>
+          </div>
+          <StatusBadge ok={mailchimpConfigured()} />
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-5 flex items-center justify-between">
-        <div>
-          <h2 className="font-display">Xero</h2>
-          <p className="text-sm text-stone">A draft invoice is created for each completed order.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <StatusPill ok={xeroConnected} />
-          {!xeroConnected && (
-            <a href="/api/integrations/xero/connect" className="btn-secondary !px-3 !py-1.5 text-xs">
-              Connect
-            </a>
-          )}
-        </div>
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
+            <h2 className="font-display">Xero</h2>
+            <p className="text-sm text-stone">A draft invoice is created for each completed order.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusBadge ok={xeroConnected} />
+            {!xeroConnected && (
+              <Button asChild variant="outline" size="sm">
+                <a href="/api/integrations/xero/connect">Connect</a>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

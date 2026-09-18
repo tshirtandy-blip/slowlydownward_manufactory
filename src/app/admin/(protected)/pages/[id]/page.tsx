@@ -71,7 +71,7 @@ export default async function PageEditorPage({ params }: { params: { id: string 
               </select>
             </div>
           )}
-          <SaveButton className="btn-secondary">Save settings</SaveButton>
+          <SaveButton>Save settings</SaveButton>
         </form>
         {page.slug !== "home" && (
           <form action={boundDelete} className="mt-4 pt-4 border-t hairline">

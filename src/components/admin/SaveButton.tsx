@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * A submit button for a <form action={serverAction}> that shows "Saved"
@@ -26,7 +28,7 @@ export function SaveButton({
   children = "Save",
   savingText = "Saving…",
   savedText = "Saved",
-  className = "btn-primary",
+  className,
 }: {
   children?: React.ReactNode;
   savingText?: React.ReactNode;
@@ -68,7 +70,7 @@ export function SaveButton({
   }, []);
 
   return (
-    <button ref={buttonRef} type="submit" disabled={pending} className={className + " disabled:opacity-60"}>
+    <button ref={buttonRef} type="submit" disabled={pending} className={cn(buttonVariants(), className)}>
       {pending ? savingText : saved ? savedText : children}
     </button>
   );

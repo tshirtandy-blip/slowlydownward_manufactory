@@ -2,9 +2,11 @@
 
 import { updateLegalSettings } from "./actions";
 import { SaveButton } from "@/components/admin/SaveButton";
-
-const inputClass = "border hairline bg-transparent px-3 py-2 text-sm w-full";
-const textareaClass = inputClass + " min-h-[5rem]";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function LegalSettingsForm({
   settings,
@@ -18,50 +20,78 @@ export function LegalSettingsForm({
   };
 }) {
   return (
-    <form action={updateLegalSettings} className="space-y-8 max-w-xl">
-      <div className="border hairline p-4">
-        <label className="flex items-center gap-2 text-sm mb-4">
-          <input type="checkbox" name="cookiePopupEnabled" defaultChecked={settings.cookiePopupEnabled} />
-          Show the cookie &amp; sign-up popup to first-time visitors
-        </label>
+    <form action={updateLegalSettings} className="max-w-xl space-y-6">
+      <Card className="border-line shadow-none">
+        <CardContent className="space-y-4 p-6">
+          <div className="flex items-center gap-2">
+            <Checkbox id="cookiePopupEnabled" name="cookiePopupEnabled" defaultChecked={settings.cookiePopupEnabled} />
+            <Label htmlFor="cookiePopupEnabled" className="text-sm font-normal">
+              Show the cookie &amp; sign-up popup to first-time visitors
+            </Label>
+          </div>
 
-        <label className="label-caps block mb-2">Cookie notice text</label>
-        <textarea
-          name="cookiePopupMessage"
-          defaultValue={settings.cookiePopupMessage}
-          className={textareaClass + " mb-4"}
-        />
+          <div>
+            <Label htmlFor="cookiePopupMessage" className="label-caps mb-2 block">
+              Cookie notice text
+            </Label>
+            <Textarea
+              id="cookiePopupMessage"
+              name="cookiePopupMessage"
+              defaultValue={settings.cookiePopupMessage}
+              className="border-line"
+            />
+          </div>
 
-        <label className="label-caps block mb-2">Sign-up heading</label>
-        <input
-          name="cookiePopupSignupHeading"
-          defaultValue={settings.cookiePopupSignupHeading}
-          className={inputClass + " mb-4"}
-        />
+          <div>
+            <Label htmlFor="cookiePopupSignupHeading" className="label-caps mb-2 block">
+              Sign-up heading
+            </Label>
+            <Input
+              id="cookiePopupSignupHeading"
+              name="cookiePopupSignupHeading"
+              defaultValue={settings.cookiePopupSignupHeading}
+              className="border-line"
+            />
+          </div>
 
-        <label className="label-caps block mb-2">Sign-up text</label>
-        <textarea name="cookiePopupSignupBody" defaultValue={settings.cookiePopupSignupBody} className={textareaClass} />
-        <p className="text-xs text-stone mt-2">
-          Anyone who leaves their email here (or in the footer's own sign-up form) is added to your Mailchimp
-          audience, same as ticking "Email me about new releases" in their account settings.
-        </p>
-      </div>
+          <div>
+            <Label htmlFor="cookiePopupSignupBody" className="label-caps mb-2 block">
+              Sign-up text
+            </Label>
+            <Textarea
+              id="cookiePopupSignupBody"
+              name="cookiePopupSignupBody"
+              defaultValue={settings.cookiePopupSignupBody}
+              className="border-line"
+            />
+            <p className="mt-2 text-xs text-stone">
+              Anyone who leaves their email here (or in the footer's own sign-up form) is added to your Mailchimp
+              audience, same as ticking "Email me about new releases" in their account settings.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="border hairline p-4">
-        <label className="label-caps block mb-2">Right to cancel — withdrawal window (days)</label>
-        <input
-          type="number"
-          min={1}
-          name="withdrawalPeriodDays"
-          defaultValue={settings.withdrawalPeriodDays}
-          className={inputClass + " max-w-[8rem]"}
-        />
-        <p className="text-xs text-stone mt-2">
-          Shown next to the "Withdraw from contract" button on a customer's order history (Your Account &gt; Order
-          history). Under EU/UK consumer law this is at least 14 days from delivery — the button itself always stays
-          available regardless of this number, since wrongly hiding it is the bigger legal risk.
-        </p>
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="p-6">
+          <Label htmlFor="withdrawalPeriodDays" className="label-caps mb-2 block">
+            Right to cancel — withdrawal window (days)
+          </Label>
+          <Input
+            id="withdrawalPeriodDays"
+            type="number"
+            min={1}
+            name="withdrawalPeriodDays"
+            defaultValue={settings.withdrawalPeriodDays}
+            className="max-w-[8rem] border-line"
+          />
+          <p className="mt-2 text-xs text-stone">
+            Shown next to the "Withdraw from contract" button on a customer's order history (Your Account &gt;
+            Order history). Under EU/UK consumer law this is at least 14 days from delivery — the button itself
+            always stays available regardless of this number, since wrongly hiding it is the bigger legal risk.
+          </p>
+        </CardContent>
+      </Card>
 
       <SaveButton>Save</SaveButton>
     </form>

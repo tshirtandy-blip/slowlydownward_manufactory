@@ -2,6 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { addMediumOption, deleteMediumOption } from "./actions";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -19,31 +22,28 @@ export default async function MediumsSettingsPage() {
         Book. Add as many as you need.
       </p>
 
-      <div className="border hairline mb-8">
-        {mediums.map((medium) => (
-          <div key={medium.id} className="flex items-center justify-between px-3 py-2 border-b hairline last:border-0">
-            <span className="text-sm">{medium.name}</span>
-            <form action={deleteMediumOption.bind(null, medium.id)}>
-              <ConfirmSubmitButton
-                confirmText={`Remove "${medium.name}" from the medium dropdown? Products already using it keep it, but new ones won't be able to pick it.`}
-                className="text-xs text-stone hover:text-accent"
-              >
-                Remove
-              </ConfirmSubmitButton>
-            </form>
-          </div>
-        ))}
-        {mediums.length === 0 && <p className="px-3 py-6 text-sm text-stone text-center">No mediums added yet.</p>}
-      </div>
+      <Card className="mb-8 border-line shadow-none">
+        <CardContent className="p-0">
+          {mediums.map((medium) => (
+            <div key={medium.id} className="flex items-center justify-between border-b border-line px-3 py-2 last:border-0">
+              <span className="text-sm">{medium.name}</span>
+              <form action={deleteMediumOption.bind(null, medium.id)}>
+                <ConfirmSubmitButton
+                  confirmText={`Remove "${medium.name}" from the medium dropdown? Products already using it keep it, but new ones won't be able to pick it.`}
+                  className="text-xs text-stone hover:text-accent"
+                >
+                  Remove
+                </ConfirmSubmitButton>
+              </form>
+            </div>
+          ))}
+          {mediums.length === 0 && <p className="px-3 py-6 text-center text-sm text-stone">No mediums added yet.</p>}
+        </CardContent>
+      </Card>
 
       <form action={addMediumOption} className="flex gap-2">
-        <input
-          name="name"
-          required
-          placeholder="e.g. Giclée"
-          className="border hairline bg-transparent px-3 py-2 text-sm flex-1"
-        />
-        <button className="btn-primary !px-4 !py-2">Add</button>
+        <Input name="name" required placeholder="e.g. Giclée" className="border-line" />
+        <Button type="submit">Add</Button>
       </form>
     </div>
   );
