@@ -2,6 +2,20 @@
 
 import { useRef, useState } from "react";
 
+/** Reads an upload response defensively — see ImageDropzone.tsx's copy of
+ * this for why: the server (or the host, before our code even runs) can
+ * reply with plain text instead of JSON, most often on an oversized file. */
+async function parseUploadResponse(res: Response): Promise<{ url?: string; format?: string; error?: string }> {
+  try {
+    return await res.json();
+  } catch {
+    if (res.status === 413) {
+      return { error: "That file is too large for the server to accept — try a smaller one." };
+    }
+    return { error: `Upload failed (${res.status}). Please try again.` };
+  }
+}
+
 /** A plain file picker for uploading a licensed font file (.woff2/.woff/
  * .ttf/.otf) — see /api/admin/upload-font. Modeled on ImageDropzone.tsx,
  * minus the drag-and-drop and image preview (a font file has nothing
@@ -25,8 +39,8 @@ export function FontUploadField({
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/admin/upload-font", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed.");
+      const data = await parseUploadResponse(res);
+      if (!res.ok || !data.url || !data.format) throw new Error(data.error || "Upload failed.");
       onUploaded({ url: data.url, format: data.format });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed — please try again.");

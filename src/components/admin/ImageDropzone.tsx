@@ -2,6 +2,77 @@
 
 import { useRef, useState } from "react";
 
+// Vercel (and most hosts) reject an oversized request body before our own
+// code ever runs, with a plain-text "Request Entity Too Large" page rather
+// than JSON — which is what used to surface as a raw
+// "Unexpected token 'R' ... is not valid JSON" error. Shrinking large
+// photos client-side, before they're ever sent, avoids hitting that limit
+// in the first place for the vast majority of real camera/phone photos;
+// parseUploadResponse() below is the safety net for whatever still gets
+// through (an oversized GIF, a platform error, etc).
+const MAX_DIMENSION = 2400;
+const RESIZE_IF_OVER_BYTES = 3 * 1024 * 1024;
+const JPEG_QUALITY = 0.85;
+
+/** Downscales a large photo to a sane web size before upload. Animated GIFs
+ * are left untouched — re-encoding one through <canvas> would flatten it to
+ * a single frame — and anything already reasonably sized is left alone
+ * too, so this never trades away quality that wasn't needed. Any hiccup
+ * along the way just falls back to uploading the original file. */
+async function resizeImageIfNeeded(file: File): Promise<File> {
+  if (file.type === "image/gif") return file;
+  if (file.size <= RESIZE_IF_OVER_BYTES) return file;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Couldn't read that image."));
+      el.src = objectUrl;
+    });
+
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
+    // Already small enough dimensionally — recompressing wouldn't reliably
+    // shrink it further, so just upload it as-is.
+    if (scale >= 1) return file;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const outputType = file.type === "image/png" || file.type === "image/webp" ? file.type : "image/jpeg";
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, outputType, outputType === "image/png" ? undefined : JPEG_QUALITY)
+    );
+    if (!blob) return file;
+
+    return new File([blob], file.name, { type: outputType });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/** Reads an upload response defensively — the server (or the hosting
+ * platform itself, before the server ever sees the request) doesn't always
+ * respond with JSON, most commonly a plain-text "Request Entity Too Large"
+ * page when a file is bigger than a single request is allowed to be. */
+async function parseUploadResponse(res: Response): Promise<{ url?: string; error?: string }> {
+  try {
+    return await res.json();
+  } catch {
+    if (res.status === 413) {
+      return { error: "That file is too large for the server to accept — try a smaller one." };
+    }
+    return { error: `Upload failed (${res.status}). Please try again.` };
+  }
+}
+
 /** A drag-and-drop image picker used throughout the block editor. Uploads
  * straight to Supabase Storage via /api/admin/upload and hands back a public
  * URL — the admin never has to know or type a file path. A "paste a URL
@@ -25,11 +96,12 @@ export function ImageDropzone({
     setUploading(true);
     setError(null);
     try {
+      const toSend = await resizeImageIfNeeded(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", toSend);
       const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed.");
+      const data = await parseUploadResponse(res);
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
       onChange(data.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed — please try again.");
