@@ -1,34 +1,38 @@
 import type { ReportTable as ReportTableData } from "@/lib/report-types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function ReportTable({ table }: { table: ReportTableData }) {
   if (table.rows.length === 0) {
-    return <p className="text-stone text-sm py-16 text-center border hairline">No data for this range yet.</p>;
+    return <p className="border border-line py-16 text-center text-sm text-stone">No data for this range yet.</p>;
   }
 
   return (
-    <div className="border hairline overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="label-caps text-left border-b hairline">
-            {table.columns.map((c) => (
-              <th key={c} className="p-3 whitespace-nowrap">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map((row, i) => (
-            <tr key={i} className="border-b hairline last:border-0">
-              {row.map((cell, j) => (
-                <td key={j} className="p-3 whitespace-nowrap">
-                  {cell}
-                </td>
+    <Card className="border-line shadow-none">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {table.columns.map((c) => (
+                <TableHead key={c} className="whitespace-nowrap">
+                  {c}
+                </TableHead>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {table.rows.map((row, i) => (
+              <TableRow key={i}>
+                {row.map((cell, j) => (
+                  <TableCell key={j} className="whitespace-nowrap">
+                    {cell}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
