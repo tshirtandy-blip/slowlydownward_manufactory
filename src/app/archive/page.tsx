@@ -49,8 +49,8 @@ export default async function ArchivePage() {
                   className="flex items-baseline justify-between gap-6 py-5 hover:text-stone"
                 >
                   <span>
-                    <span className="font-display text-lg block">{c.subject}</span>
-                    {c.campaignName && <span className="text-xs text-stone">{c.campaignName}</span>}
+                    <span className="font-display text-lg block">{c.campaignName || c.subject}</span>
+                    {c.campaignName && <span className="text-xs text-stone">{c.subject}</span>}
                   </span>
                   <span className="text-xs text-stone whitespace-nowrap">
                     {c.sentAt?.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}

@@ -39,8 +39,8 @@ export default async function ArchiveCampaignPage({ params }: { params: { id: st
         <Link href="/archive" className="label-caps text-stone hover:text-ink">
           ← Newsletter archive
         </Link>
-        <h1 className="font-display text-3xl mt-4 mb-2">{campaign.subject}</h1>
-        {campaign.campaignName && <p className="text-sm text-stone mb-1">{campaign.campaignName}</p>}
+        <h1 className="font-display text-3xl mt-4 mb-2">{campaign.campaignName || campaign.subject}</h1>
+        {campaign.campaignName && <p className="text-sm text-stone mb-1">{campaign.subject}</p>}
         {campaign.sentAt && (
           <p className="text-sm text-stone mb-12">
             {campaign.sentAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}

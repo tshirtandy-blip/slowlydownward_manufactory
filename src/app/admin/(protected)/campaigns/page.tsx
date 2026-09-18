@@ -41,7 +41,7 @@ export default async function CampaignsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="label-caps text-left border-b hairline">
-              <th className="p-3">Subject</th>
+              <th className="p-3">Campaign</th>
               <th className="p-3">Audience</th>
               <th className="p-3">Status</th>
               <th className="p-3">Sent / scheduled</th>
@@ -54,10 +54,16 @@ export default async function CampaignsPage() {
             {campaigns.map((c) => (
               <tr key={c.id} className="border-b hairline last:border-0 hover:bg-line/40">
                 <td className="p-3">
+                  {/* Mailchimp's own campaign name is what actually tells two
+                      similarly-worded imports apart — the subject line often
+                      repeats across a whole run of newsletters, so it's shown
+                      as the primary label here (with the subject underneath)
+                      whenever a campaign has one; a campaign composed here has
+                      no separate name, so it just shows its subject as before. */}
                   <Link href={`/admin/campaigns/${c.id}`} className="underline">
-                    {c.subject}
+                    {c.campaignName || c.subject}
                   </Link>
-                  {c.campaignName && <span className="block text-xs text-stone">{c.campaignName}</span>}
+                  {c.campaignName && <span className="block text-xs text-stone">{c.subject}</span>}
                 </td>
                 <td className="p-3 text-stone">{c.audience === "CUSTOMERS" ? "Customers" : "Everyone"}</td>
                 <td className="p-3 text-stone">{STATUS_LABEL[c.status] ?? c.status}</td>
