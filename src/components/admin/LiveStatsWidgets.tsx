@@ -44,7 +44,12 @@ export function LiveStatsWidgets({ initial }: { initial: LiveStats }) {
   return (
     <div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-        <StatTile label="Visitors right now" value={String(stats.visitorsNow)} />
+        <StatTile
+          label="Visitors right now"
+          value={String(stats.visitorsNow)}
+          hint="Active in the last 2 minutes"
+          live
+        />
         <StatTile label="Visitors — last 24h" value={String(stats.visitors24h)} />
         <StatTile label="Visitors — this week" value={String(stats.visitorsWeek)} />
       </div>
