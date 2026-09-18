@@ -38,6 +38,9 @@ export default async function ProductEditPage({ params }: { params: { printId: s
           <Link href={`/admin/products/${print.id}/stock`} className="btn-secondary !px-4 !py-2">
             Stock
           </Link>
+          <Link href={`/admin/products/${print.id}/coa`} className="btn-secondary !px-4 !py-2">
+            Certificate of Authenticity
+          </Link>
           <form action={togglePublished.bind(null, print.id, !print.published)}>
             <button className="btn-secondary !px-4 !py-2">{print.published ? "Unpublish" : "Publish"}</button>
           </form>

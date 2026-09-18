@@ -119,11 +119,19 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 href={`/admin/orders/${order.id}/commercial-invoice`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs underline hover:text-ink mt-2 inline-block"
+                className="text-xs underline hover:text-ink mt-2 block"
               >
                 View commercial invoice (PDF)
               </a>
             )}
+            <a
+              href={`/admin/orders/${order.id}/coa`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs underline hover:text-ink mt-2 block"
+            >
+              View/reprint Certificate of Authenticity (PDF)
+            </a>
           </CardContent>
         </Card>
         <Card className="border-line shadow-none">

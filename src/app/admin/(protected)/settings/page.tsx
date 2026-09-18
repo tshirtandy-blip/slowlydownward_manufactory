@@ -38,6 +38,11 @@ const SETTINGS_SECTIONS = [
     description: "How long a chosen edition number is held for a customer, and the note shown by the picker.",
   },
   {
+    href: "/admin/settings/coa-template",
+    title: "COA template",
+    description: "The default Certificate of Authenticity template printed from the packing queue.",
+  },
+  {
     href: "/admin/settings/integrations",
     title: "Integrations",
     description: "Stripe, UPS, Royal Mail, Mailchimp and Xero connection status.",
