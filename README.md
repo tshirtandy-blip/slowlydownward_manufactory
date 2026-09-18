@@ -388,6 +388,28 @@ extra to sign up for.
    For syncing your subscriber *list* into Resend (rather than campaign
    history), see `upsertResendContact` — that's a separate concern from
    this script.
+5. **One-off audience import** — brings your existing Mailchimp subscriber
+   list into `Customer.marketingOptIn`, which is the entire audience model
+   Resend Broadcasts sends against (see src/lib/integrations/
+   resend-broadcasts.ts). Without this, only people who've signed up or
+   ordered since the Resend switchover receive campaigns; everyone
+   Mailchimp already had is missing. Only currently-`subscribed` Mailchimp
+   members are imported, and it only ever adds consent — it never
+   unsubscribes or overwrites an existing customer's name or opt-in date.
+   Needs your production database and your Resend credentials, not just
+   Mailchimp's:
+   ```bash
+   MAILCHIMP_API_KEY="..." \
+   MAILCHIMP_AUDIENCE_ID="..." \
+   DATABASE_URL="<Supabase DIRECT connection string>" \
+   DIRECT_URL="<same>" \
+   RESEND_API_KEY="..." \
+   RESEND_FROM_EMAIL="..." \
+   npm run import:mailchimp-audience
+   ```
+   Safe to re-run — each member upserts by email. See
+   `scripts/import-mailchimp-audience.ts`. Ask Claude to run this once the
+   keys are available if you'd rather not run it yourself.
 
 ### Xero
 
