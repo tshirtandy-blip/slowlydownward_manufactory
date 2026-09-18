@@ -192,6 +192,33 @@ export async function deleteCampaignDraft(id: string) {
   redirect("/admin/campaigns");
 }
 
+/** Deletes any campaign that isn't actively scheduled or mid-send — the
+ * general-purpose delete for the campaigns list/detail pages, e.g. to clear
+ * out duplicate-content campaigns brought in by the one-off Mailchimp
+ * import (see scripts/import-mailchimp-campaigns.ts). A SENT campaign also
+ * disappears from the public archive (src/app/archive) once deleted, since
+ * that page reads the same row. A scheduled send has to be cancelled first
+ * (cancelScheduledCampaign, above) — deleting it out from under Resend
+ * would leave the broadcast itself still scheduled. */
+export async function deleteCampaign(id: string) {
+  await requireCampaignsAccess();
+  const campaign = await prisma.campaign.findUnique({ where: { id } });
+  if (!campaign) return;
+  if (campaign.status === "SCHEDULED") {
+    throw new Error("Cancel the scheduled send first, then delete it.");
+  }
+  if (campaign.status === "SENDING") {
+    throw new Error("Can't delete a campaign that's currently sending.");
+  }
+  await prisma.$transaction([
+    prisma.campaignEvent.deleteMany({ where: { campaignId: id } }),
+    prisma.campaign.delete({ where: { id } }),
+  ]);
+  revalidatePath("/admin/campaigns");
+  revalidatePath("/archive");
+  redirect("/admin/campaigns");
+}
+
 export type TestResult = { ok: true } | { ok: false; error: string };
 
 /** Sends the current draft content to one address for a look before it goes

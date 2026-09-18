@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { resendBroadcastsConfigured } from "@/lib/integrations/resend-broadcasts";
+import { deleteCampaign } from "./actions";
+import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,7 @@ export default async function CampaignsPage() {
               <th className="p-3">Sent / scheduled</th>
               <th className="p-3">Recipients</th>
               <th className="p-3">Opens</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -70,11 +73,27 @@ export default async function CampaignsPage() {
                     ? `${c._count.events} (${Math.round((c._count.events / c.recipientCount) * 100)}%)`
                     : "—"}
                 </td>
+                <td className="p-3 text-right">
+                  {c.status !== "SCHEDULED" && c.status !== "SENDING" && (
+                    <form action={deleteCampaign.bind(null, c.id)}>
+                      <ConfirmSubmitButton
+                        confirmText={
+                          c.status === "SENT"
+                            ? `Delete "${c.subject}"? It'll also disappear from the public newsletter archive. This can't be undone.`
+                            : `Delete "${c.subject}"? This can't be undone.`
+                        }
+                        className="text-xs text-stone hover:text-ink underline"
+                      >
+                        Delete
+                      </ConfirmSubmitButton>
+                    </form>
+                  )}
+                </td>
               </tr>
             ))}
             {campaigns.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-stone">
+                <td colSpan={7} className="p-8 text-center text-stone">
                   No campaigns yet.
                 </td>
               </tr>

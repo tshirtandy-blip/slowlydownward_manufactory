@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CampaignForm } from "@/components/admin/campaigns/CampaignForm";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
-import { cancelScheduledCampaignAction } from "../actions";
+import { cancelScheduledCampaignAction, deleteCampaign } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +105,22 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       )}
 
       <p className="label-caps text-stone mb-2">Message</p>
-      <div className="border hairline p-6 bg-white" dangerouslySetInnerHTML={{ __html: campaign.html }} />
+      <div className="border hairline p-6 bg-white mb-8" dangerouslySetInnerHTML={{ __html: campaign.html }} />
+
+      {campaign.status !== "SCHEDULED" && campaign.status !== "SENDING" && (
+        <form action={deleteCampaign.bind(null, campaign.id)}>
+          <ConfirmSubmitButton
+            confirmText={
+              campaign.status === "SENT"
+                ? "Delete this campaign? It'll also disappear from the public newsletter archive. This can't be undone."
+                : "Delete this campaign? This can't be undone."
+            }
+            className="text-sm text-stone hover:text-ink underline"
+          >
+            Delete this campaign
+          </ConfirmSubmitButton>
+        </form>
+      )}
     </div>
   );
 }
