@@ -2,23 +2,58 @@
 
 import { useRef, useState } from "react";
 
-// Vercel (and most hosts) reject an oversized request body before our own
-// code ever runs, with a plain-text "Request Entity Too Large" page rather
-// than JSON — which is what used to surface as a raw
-// "Unexpected token 'R' ... is not valid JSON" error. Shrinking large
-// photos client-side, before they're ever sent, avoids hitting that limit
-// in the first place for the vast majority of real camera/phone photos;
-// parseUploadResponse() below is the safety net for whatever still gets
-// through (an oversized GIF, a platform error, etc).
-const MAX_DIMENSION = 2400;
-const RESIZE_IF_OVER_BYTES = 3 * 1024 * 1024;
-const JPEG_QUALITY = 0.85;
+// Vercel enforces a hard, non-configurable 4.5MB request-body limit on
+// every serverless function (see /api/admin/upload) — a platform ceiling,
+// not something our own code or plan can raise. When a request goes over
+// it, Vercel rejects the request itself, before our route ever runs, with
+// a plain-text "Request Entity Too Large" page instead of JSON — which is
+// what used to surface as a raw "Unexpected token 'R' ... is not valid
+// JSON" error (see parseUploadResponse() below, which is the safety net
+// for that). SAFE_TARGET_BYTES (4MB) leaves real headroom under that
+// 4.5MB hard limit for multipart form overhead.
+const SAFE_TARGET_BYTES = 4 * 1024 * 1024;
+const RESIZE_IF_OVER_BYTES = 2 * 1024 * 1024;
 
-/** Downscales a large photo to a sane web size before upload. Animated GIFs
- * are left untouched — re-encoding one through <canvas> would flatten it to
- * a single frame — and anything already reasonably sized is left alone
- * too, so this never trades away quality that wasn't needed. Any hiccup
- * along the way just falls back to uploading the original file. */
+// Progressively smaller/lower-quality passes, tried in order until one
+// lands under SAFE_TARGET_BYTES. A single resize pass isn't always enough:
+// photos of art prints are full of fine texture and detail, which JPEG/WebP
+// compress far less efficiently than a typical photo (sky, skin, etc), so
+// a detailed print photo can still be several MB after one pass.
+const COMPRESSION_STEPS = [
+  { maxDimension: 2400, quality: 0.85 },
+  { maxDimension: 2000, quality: 0.75 },
+  { maxDimension: 1600, quality: 0.65 },
+  { maxDimension: 1200, quality: 0.5 },
+];
+
+async function canvasToBlob(
+  img: HTMLImageElement,
+  maxDimension: number,
+  quality: number,
+  outputType: string
+): Promise<Blob | null> {
+  const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, outputType, outputType === "image/png" ? undefined : quality));
+}
+
+/** Downscales/recompresses a large photo before upload, trying
+ * progressively smaller/lower-quality passes until the result comfortably
+ * fits under Vercel's hard request-body limit. Animated GIFs are left
+ * untouched (re-encoding one through <canvas> would flatten it to a single
+ * frame) and anything already reasonably sized is left alone too, so this
+ * never trades away quality that wasn't needed. If every pass still comes
+ * out too big (rare — an extremely detailed PNG with transparency), the
+ * last resort drops transparency and re-encodes as JPEG rather than
+ * uploading something that's guaranteed to fail; any other hiccup along
+ * the way just falls back to the original file (parseUploadResponse() in
+ * upload() below is the safety net if that original still turns out too
+ * big for the server to accept). */
 async function resizeImageIfNeeded(file: File): Promise<File> {
   if (file.type === "image/gif") return file;
   if (file.size <= RESIZE_IF_OVER_BYTES) return file;
@@ -32,25 +67,30 @@ async function resizeImageIfNeeded(file: File): Promise<File> {
       el.src = objectUrl;
     });
 
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
-    // Already small enough dimensionally — recompressing wouldn't reliably
-    // shrink it further, so just upload it as-is.
-    if (scale >= 1) return file;
+    const preferredType = file.type === "image/png" || file.type === "image/webp" ? file.type : "image/jpeg";
+    let best: File | null = null;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (const step of COMPRESSION_STEPS) {
+      const blob = await canvasToBlob(img, step.maxDimension, step.quality, preferredType);
+      if (!blob) continue;
+      const candidate = new File([blob], file.name, { type: preferredType });
+      if (!best || candidate.size < best.size) best = candidate;
+      if (blob.size <= SAFE_TARGET_BYTES) return candidate;
+    }
 
-    const outputType = file.type === "image/png" || file.type === "image/webp" ? file.type : "image/jpeg";
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, outputType, outputType === "image/png" ? undefined : JPEG_QUALITY)
-    );
-    if (!blob) return file;
+    // PNG has no quality knob to turn down, so a large, detailed,
+    // transparent PNG can still be too big after every dimension step
+    // above — as an absolute last resort, drop transparency and re-encode
+    // the smallest attempt as JPEG.
+    if (preferredType === "image/png" && (!best || best.size > SAFE_TARGET_BYTES)) {
+      const smallest = COMPRESSION_STEPS[COMPRESSION_STEPS.length - 1];
+      const blob = await canvasToBlob(img, smallest.maxDimension, 0.6, "image/jpeg");
+      if (blob && (!best || blob.size < best.size)) {
+        best = new File([blob], file.name.replace(/\.png$/i, ".jpg"), { type: "image/jpeg" });
+      }
+    }
 
-    return new File([blob], file.name, { type: outputType });
+    return best ?? file;
   } catch {
     return file;
   } finally {
