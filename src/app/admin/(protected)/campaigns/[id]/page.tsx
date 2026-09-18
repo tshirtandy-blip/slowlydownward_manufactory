@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CampaignForm } from "@/components/admin/campaigns/CampaignForm";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
-import { cancelScheduledCampaign } from "../actions";
+import { cancelScheduledCampaignAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +61,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       </p>
 
       {campaign.status === "SCHEDULED" && (
-        <form action={cancelScheduledCampaign.bind(null, campaign.id)} className="mb-8">
+        <form action={cancelScheduledCampaignAction.bind(null, campaign.id)} className="mb-8">
           <ConfirmSubmitButton
             confirmText="Cancel this scheduled send and pull it back to a draft?"
             className="btn-secondary !px-4 !py-2"

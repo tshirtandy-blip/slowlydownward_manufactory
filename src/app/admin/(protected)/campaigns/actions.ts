@@ -168,6 +168,17 @@ export async function cancelScheduledCampaign(id: string): Promise<SendResult> {
   return { ok: true };
 }
 
+/** Plain-form-action wrapper around cancelScheduledCampaign — a bare
+ * `<form action={...}>` (no useFormState/useActionState) can't read a
+ * returned value, and its action prop's type only accepts a function
+ * returning void | Promise<void>, not our SendResult. Throwing on failure
+ * at least surfaces a problem via Next's error boundary instead of the
+ * form silently doing nothing. */
+export async function cancelScheduledCampaignAction(id: string): Promise<void> {
+  const result = await cancelScheduledCampaign(id);
+  if (!result.ok) throw new Error(result.error);
+}
+
 /** Deletes a draft that was never sent — a sent or scheduled campaign is
  * kept for its history/stats (cancel a scheduled one back to draft first
  * if it genuinely needs deleting). */
