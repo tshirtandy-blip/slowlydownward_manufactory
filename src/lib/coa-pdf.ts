@@ -55,21 +55,34 @@ async function launchBrowser() {
     return puppeteer.launch({ executablePath: localExecutablePath, headless: true });
   }
 
+  // @sparticuz/chromium-min ships libnss3.so and friends inside its
+  // downloaded pack (confirmed by hand: the release asset's al2023.tar.br
+  // contains lib/libnss3.so), but it only EXTRACTS them when its own
+  // isRunningInAwsLambda()/isRunningInAwsLambdaNode20() checks pass — which
+  // look for an AWS_EXECUTION_ENV or AWS_LAMBDA_JS_RUNTIME env var that only
+  // real AWS Lambda sets. Vercel doesn't set it, so those checks silently
+  // fail, the library files are never extracted, and Chromium fails to
+  // launch with "error while loading shared libraries: libnss3.so" — no
+  // Node.js version or build-cache setting changes this. Setting this env
+  // var ourselves (before the package's module code first runs) makes it
+  // behave as if it's on Lambda Node 20/AL2023 and actually extract the
+  // libraries. Must happen before the dynamic import below, since the
+  // package's top-level module code (which also wires up LD_LIBRARY_PATH)
+  // runs once, at first import, and reads this env var then.
+  process.env.AWS_LAMBDA_JS_RUNTIME ??= "nodejs20.x";
+
   const chromium = (await import("@sparticuz/chromium-min")).default;
-  // No GPU is available in a serverless function; without this, Chromium
-  // can hang/crash on launch in some environments instead of falling back
-  // cleanly to software rendering.
-  chromium.setGraphicsMode = false;
   const executablePath = await chromium.executablePath(CHROMIUM_PACK_URL);
-  // chromium.executablePath() extracts the downloaded pack to /tmp and is
-  // documented to set LD_LIBRARY_PATH itself as a side effect — but that's
-  // exactly the step implicated in "error while loading shared libraries:
-  // libnss3.so" reports against this package on Vercel (the extracted
-  // .so files, e.g. libnss3.so/libnspr4.so, end up somewhere the dynamic
-  // linker isn't told to look). Setting it explicitly here, pointed at the
-  // extracted binary's own directory, is a cheap no-op when it's already
-  // correct and a real fix when it isn't.
-  process.env.LD_LIBRARY_PATH = executablePath.replace(/\/[^/]+$/, "");
+
+  // Belt-and-suspenders: the package's own module-load-time code (see
+  // above) sets LD_LIBRARY_PATH to /tmp/al2023/lib too, but only the FIRST
+  // time that module is evaluated in a given function instance — a warm
+  // invocation that reuses the process won't re-run it. Setting it
+  // ourselves on every call is a harmless no-op when it's already correct.
+  const extraLibPaths = ["/tmp/al2023/lib", "/tmp/al2/lib"];
+  process.env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH
+    ? [...new Set([...extraLibPaths, ...process.env.LD_LIBRARY_PATH.split(":")])].join(":")
+    : extraLibPaths.join(":");
 
   return puppeteer.launch({
     args: chromium.args,
