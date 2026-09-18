@@ -4,6 +4,7 @@ import { royalMailConfigured } from "@/lib/integrations/royalmail";
 import { mailchimpConfigured } from "@/lib/integrations/mailchimp";
 import { xeroConfigured } from "@/lib/integrations/xero";
 import { emailConfigured } from "@/lib/integrations/resend";
+import { resendBroadcastsConfigured } from "@/lib/integrations/resend-broadcasts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,8 +78,25 @@ export default async function IntegrationsPage() {
       <Card className="border-line shadow-none">
         <CardContent className="flex items-center justify-between p-5">
           <div>
+            <h2 className="font-display">Resend Broadcasts (campaigns)</h2>
+            <p className="text-sm text-stone">
+              Powers Admin &gt; Campaigns — the newsletter/marketing sends that used to go out through Mailchimp.
+              Uses the same API key as Resend above, plus its own webhook (see the README) for opens/clicks and
+              automatic list cleaning on a bounce or complaint.
+            </p>
+          </div>
+          <StatusBadge ok={resendBroadcastsConfigured()} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-line shadow-none">
+        <CardContent className="flex items-center justify-between p-5">
+          <div>
             <h2 className="font-display">Mailchimp</h2>
-            <p className="text-sm text-stone">Customers are synced to your audience after a successful order.</p>
+            <p className="text-sm text-stone">
+              Legacy — customers are still synced here too for now. Being phased out in favour of Resend Broadcasts
+              above.
+            </p>
           </div>
           <StatusBadge ok={mailchimpConfigured()} />
         </CardContent>
