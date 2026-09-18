@@ -1,0 +1,87 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { resendBroadcastsConfigured } from "@/lib/integrations/resend-broadcasts";
+
+export const dynamic = "force-dynamic";
+
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: "Draft",
+  SCHEDULED: "Scheduled",
+  SENDING: "Sending",
+  SENT: "Sent",
+  FAILED: "Failed",
+};
+
+export default async function CampaignsPage() {
+  const campaigns = await prisma.campaign.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { events: { where: { type: "email.opened" } } } } },
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="font-display text-2xl">Campaigns</h1>
+        <Link href="/admin/campaigns/new" className="btn-primary !px-4 !py-2">
+          New campaign
+        </Link>
+      </div>
+
+      {!resendBroadcastsConfigured() && (
+        <p className="mb-6 text-sm text-stone border hairline p-4">
+          Resend isn't configured yet — add <code className="text-ink">RESEND_API_KEY</code> and{" "}
+          <code className="text-ink">RESEND_FROM_EMAIL</code> to your environment (Admin &gt; Settings &gt;
+          Integrations shows the status). Drafts can still be written and saved in the meantime.
+        </p>
+      )}
+
+      <div className="border hairline">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="label-caps text-left border-b hairline">
+              <th className="p-3">Subject</th>
+              <th className="p-3">Audience</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Sent / scheduled</th>
+              <th className="p-3">Recipients</th>
+              <th className="p-3">Opens</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map((c) => (
+              <tr key={c.id} className="border-b hairline last:border-0 hover:bg-line/40">
+                <td className="p-3">
+                  <Link href={`/admin/campaigns/${c.id}`} className="underline">
+                    {c.subject}
+                  </Link>
+                </td>
+                <td className="p-3 text-stone">{c.audience === "CUSTOMERS" ? "Customers" : "Everyone"}</td>
+                <td className="p-3 text-stone">{STATUS_LABEL[c.status] ?? c.status}</td>
+                <td className="p-3 text-stone">
+                  {c.sentAt
+                    ? c.sentAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+                    : c.scheduledFor
+                    ? c.scheduledFor.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+                    : "—"}
+                </td>
+                <td className="p-3 text-stone">{c.recipientCount ?? "—"}</td>
+                <td className="p-3 text-stone">
+                  {c.status === "SENT" && c.recipientCount
+                    ? `${c._count.events} (${Math.round((c._count.events / c.recipientCount) * 100)}%)`
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+            {campaigns.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-stone">
+                  No campaigns yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
