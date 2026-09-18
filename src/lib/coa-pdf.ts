@@ -56,9 +56,24 @@ async function launchBrowser() {
   }
 
   const chromium = (await import("@sparticuz/chromium-min")).default;
+  // No GPU is available in a serverless function; without this, Chromium
+  // can hang/crash on launch in some environments instead of falling back
+  // cleanly to software rendering.
+  chromium.setGraphicsMode = false;
+  const executablePath = await chromium.executablePath(CHROMIUM_PACK_URL);
+  // chromium.executablePath() extracts the downloaded pack to /tmp and is
+  // documented to set LD_LIBRARY_PATH itself as a side effect — but that's
+  // exactly the step implicated in "error while loading shared libraries:
+  // libnss3.so" reports against this package on Vercel (the extracted
+  // .so files, e.g. libnss3.so/libnspr4.so, end up somewhere the dynamic
+  // linker isn't told to look). Setting it explicitly here, pointed at the
+  // extracted binary's own directory, is a cheap no-op when it's already
+  // correct and a real fix when it isn't.
+  process.env.LD_LIBRARY_PATH = executablePath.replace(/\/[^/]+$/, "");
+
   return puppeteer.launch({
     args: chromium.args,
-    executablePath: await chromium.executablePath(CHROMIUM_PACK_URL),
+    executablePath,
     headless: true,
   });
 }
