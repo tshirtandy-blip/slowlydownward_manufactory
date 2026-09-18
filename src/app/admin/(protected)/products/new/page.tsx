@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { NewPrintImageField } from "./NewPrintImageField";
 
 export default function NewPrintPage() {
   return (
@@ -56,12 +57,7 @@ export default function NewPrintPage() {
                 <Input id="npYear" name="year" type="number" className="border-line" />
               </div>
             </div>
-            <div>
-              <Label htmlFor="npImageUrl" className="label-caps mb-2 block">
-                Image URL
-              </Label>
-              <Input id="npImageUrl" name="imageUrl" placeholder="https://…" className="border-line" />
-            </div>
+            <NewPrintImageField />
             <div>
               <Label htmlFor="npDescription" className="label-caps mb-2 block">
                 Description
