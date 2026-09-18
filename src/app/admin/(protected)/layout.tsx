@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminMobileNav } from "@/components/admin/AdminMobileNav";
+import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
 
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -16,6 +17,9 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
       <AdminSidebar role={role} name={name} />
       <div className="flex-1 min-h-screen">
         <AdminMobileNav role={role} name={name} />
+        <div className="hidden border-b border-line px-10 py-3 md:block">
+          <AdminBreadcrumb />
+        </div>
         <main className="min-h-screen bg-paper px-6 py-6 md:px-10 md:py-8">{children}</main>
       </div>
     </div>
