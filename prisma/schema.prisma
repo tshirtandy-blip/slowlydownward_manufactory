@@ -153,6 +153,14 @@ model SiteSettings {
   // penalises leaving it up a little long.
   withdrawalPeriodDays Int @default(14)
 
+  // The two standing Resend Segments that Admin > Campaigns sends to —
+  // created automatically the first time they're needed (see
+  // getMarketingSegments in src/lib/integrations/resend-broadcasts.ts) and
+  // kept in sync continuously (newsletter signup adds to "everyone",
+  // a completed order adds to both). Null until first created.
+  resendSegmentAllId       String?
+  resendSegmentCustomersId String?
+
   updatedAt            DateTime    @updatedAt
 }
 
@@ -168,6 +176,7 @@ model User {
   packedOrders  Order[]     @relation("PackedBy")
   createdOrders Order[]     @relation("CreatedOrders")
   auditLogs     AuditLog[]
+  campaigns     Campaign[]
 }
 
 model Customer {
@@ -183,6 +192,10 @@ model Customer {
   // happened), not shown anywhere in the UI.
   marketingConsentAt DateTime?
   mailchimpId    String?
+  // Id of this person's Contact record in Resend (Admin > Campaigns) — kept
+  // in sync at the same two moments as mailchimpId: newsletter signup and a
+  // completed order (see src/lib/integrations/resend-broadcasts.ts).
+  resendContactId String?
   xeroContactId  String?
   // Null for a customer who has only ever checked out as a guest — set the
   // first time they register/create a password, at which point they can
@@ -592,4 +605,72 @@ model AuditLog {
   entityId   String
   meta       Json?
   createdAt  DateTime @default(now())
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+// Which standing Resend Segment (see SiteSettings.resendSegmentAllId /
+// resendSegmentCustomersId) a campaign goes to — this is the "which
+// database to send from" choice on the compose page. ALL is everyone who's
+// opted into marketing email; CUSTOMERS narrows that to people who've
+// actually placed an order.
+enum CampaignAudience {
+  ALL
+  CUSTOMERS
+}
+
+// A marketing email sent from Admin > Campaigns via Resend Broadcasts —
+// separate from EmailTemplate, which covers the site's transactional
+// emails. See src/lib/integrations/resend-broadcasts.ts for how this talks
+// to Resend, and src/app/admin/(protected)/campaigns for the admin UI.
+model Campaign {
+  id       String           @id @default(cuid())
+  subject  String
+  html     String
+  audience CampaignAudience @default(ALL)
+  status   CampaignStatus   @default(DRAFT)
+
+  // Snapshot taken the moment it's sent/scheduled — the compose page shows
+  // a live count from the same query, but this is what actually went out.
+  recipientCount Int?
+
+  // Set only once scheduled/sent, once we know which Resend objects this
+  // campaign maps to — a draft that's never been sent has neither.
+  resendBroadcastId String?
+  scheduledFor      DateTime?
+  sentAt            DateTime?
+
+  createdByUserId String?
+  createdBy       User?   @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  events CampaignEvent[]
+
+  @@index([status])
+}
+
+// One row per Resend webhook event (email.opened, email.clicked,
+// email.bounced, ...) for a broadcast-sent email — see
+// src/app/api/webhooks/resend/route.ts. Kept as raw rows rather than
+// running counters on Campaign so the opens/clicks shown in the admin are
+// always a straight count of real events, and so a per-recipient link
+// list is possible later without a schema change.
+model CampaignEvent {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  type       String // "email.opened", "email.clicked", "email.bounced", "email.complained", ...
+  recipient  String?
+  resendEmailId String?
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, type])
 }
