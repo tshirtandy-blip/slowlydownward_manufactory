@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "src/app/admin/(protected)/pack/page.tsx": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "src/app/admin/(protected)/orders/[id]/coa/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

@@ -5,6 +5,12 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
+  // puppeteer-core + @sparticuz/chromium (Certificate of Authenticity PDF
+  // generation — see src/lib/coa-pdf.ts) ship a native Chromium binary and
+  // must NOT be bundled/traced by webpack like ordinary JS — Next.js should
+  // just require() them from node_modules at runtime, same as any other
+  // server-only native dependency.
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
   eslint: {
     // Type errors still fail the build; this just stops an unconfigured
     // ESLint from blocking `next build` in fresh checkouts.
