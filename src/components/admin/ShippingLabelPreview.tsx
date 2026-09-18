@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 /**
  * Shared label display used both right after packing (PackCarrierPicker)
  * and for reprinting later from the order detail page. UPS labels come
@@ -62,11 +64,11 @@ export function ShippingLabelPreview({
       {labelUrl &&
         (isImage ? (
           <div className="mt-2">
-            <img src={labelUrl} alt="Shipping label" className="border hairline w-32 mb-2" />
+            <img src={labelUrl} alt="Shipping label" className="border border-line w-32 mb-2" />
             <div>
-              <button type="button" onClick={handlePrint} className="btn-secondary !px-4 !py-2 text-xs">
+              <Button type="button" variant="secondary" size="sm" onClick={handlePrint}>
                 Print label
-              </button>
+              </Button>
             </div>
           </div>
         ) : (

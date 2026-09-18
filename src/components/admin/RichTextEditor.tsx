@@ -63,8 +63,8 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
   }
 
   return (
-    <div className="border hairline">
-      <div className="flex flex-wrap gap-1 px-2 py-1 border-b hairline bg-line/30">
+    <div className="border border-line">
+      <div className="flex flex-wrap gap-1 px-2 py-1 border-b border-line bg-line/30">
         {TOOLBAR.map((btn) => (
           <button
             key={btn.command}
@@ -75,7 +75,7 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
             // execCommand needs to know what to format.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => exec(btn.command)}
-            className="text-xs px-2 py-1 hover:bg-white border hairline"
+            className="text-xs px-2 py-1 hover:bg-white border border-line"
           >
             {btn.label}
           </button>
@@ -85,7 +85,7 @@ export function RichTextEditor({ value, onChange }: { value: string; onChange: (
           title="Add a link"
           onMouseDown={(e) => e.preventDefault()}
           onClick={addLink}
-          className="text-xs px-2 py-1 hover:bg-white border hairline"
+          className="text-xs px-2 py-1 hover:bg-white border border-line"
         >
           Link
         </button>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateDrawerLocation } from "@/app/admin/(protected)/products/actions";
+import { Input } from "@/components/ui/input";
 
 /** A single drawer/location for the whole print — every copy of an edition
  * is stored together, so this replaces editing a location per edition row. */
@@ -12,14 +13,14 @@ export function DrawerLocationEditor({ printId, initial }: { printId: string; in
 
   return (
     <div className="flex items-center gap-2">
-      <input
+      <Input
         value={code}
         onChange={(e) => {
           setCode(e.target.value);
           setSaved(false);
         }}
         placeholder="e.g. C3-D5"
-        className="border hairline bg-transparent px-3 py-2 text-sm w-40"
+        className="w-40 border-line"
       />
       <button
         type="button"
@@ -30,7 +31,7 @@ export function DrawerLocationEditor({ printId, initial }: { printId: string; in
             setSaved(true);
           })
         }
-        className="text-xs underline text-stone hover:text-ink disabled:opacity-40"
+        className="text-xs text-stone underline hover:text-ink disabled:opacity-40"
       >
         {saved ? "Saved" : "Save"}
       </button>

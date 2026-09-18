@@ -47,7 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
 function CustomTooltip({ active, payload, label, formatter }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border hairline px-3 py-2 text-xs shadow-sm">
+    <div className="bg-white border border-line px-3 py-2 text-xs shadow-sm">
       <p className="text-stone mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
@@ -120,7 +120,7 @@ export function StockBreakdownBar({ data }: { data: { status: string; count: num
   const total = data[0]?.total || data.reduce((s, d) => s + d.count, 0) || 1;
   return (
     <div>
-      <div className="flex h-4 w-full overflow-hidden rounded-sm border hairline">
+      <div className="flex h-4 w-full overflow-hidden rounded-sm border border-line">
         {data.map((d) => (
           <div
             key={d.status}

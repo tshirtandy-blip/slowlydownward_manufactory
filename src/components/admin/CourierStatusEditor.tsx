@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateCourierStatus, refreshCourierStatus } from "@/app/admin/(protected)/orders/[id]/actions";
+import { Input } from "@/components/ui/input";
 
 const PRESETS = ["Label created", "Collected", "In transit", "Delivered"];
 
@@ -39,20 +40,20 @@ export function CourierStatusEditor({
         }}
         className="flex items-center gap-2"
       >
-        <input
+        <Input
           name="courierStatus"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           list="courier-status-presets"
           placeholder="Not yet set"
-          className="border hairline bg-transparent px-2 py-1 text-sm w-40"
+          className="h-8 w-40 border-line py-1"
         />
         <datalist id="courier-status-presets">
           {PRESETS.map((p) => (
             <option key={p} value={p} />
           ))}
         </datalist>
-        <button type="submit" disabled={pending} className="text-xs underline text-stone hover:text-ink disabled:opacity-50">
+        <button type="submit" disabled={pending} className="text-xs text-stone underline hover:text-ink disabled:opacity-50">
           Save
         </button>
         {hasTrackingNumber && (
@@ -60,13 +61,13 @@ export function CourierStatusEditor({
             type="button"
             onClick={handleRefresh}
             disabled={pending}
-            className="text-xs underline text-stone hover:text-ink disabled:opacity-50"
+            className="text-xs text-stone underline hover:text-ink disabled:opacity-50"
           >
             {pending ? "Checking…" : "Refresh from carrier"}
           </button>
         )}
       </form>
-      {error && <p className="text-xs text-accent mt-1">{error}</p>}
+      {error && <p className="mt-1 text-xs text-accent">{error}</p>}
     </div>
   );
 }

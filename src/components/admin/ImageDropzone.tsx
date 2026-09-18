@@ -59,7 +59,7 @@ export function ImageDropzone({
           handleFiles(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`border hairline border-dashed p-4 text-center cursor-pointer transition-colors ${
+        className={`border border-line border-dashed p-4 text-center cursor-pointer transition-colors ${
           dragOver ? "border-ink bg-line/30" : "hover:border-ink"
         }`}
       >
@@ -67,7 +67,7 @@ export function ImageDropzone({
           <div className="flex items-center gap-4 text-left">
             {/* Plain <img> is fine for a small admin-only thumbnail preview. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={value} alt="" className="w-20 h-20 object-cover border hairline shrink-0" />
+            <img src={value} alt="" className="w-20 h-20 object-cover border border-line shrink-0" />
             <p className="text-sm text-stone">
               {uploading ? "Uploading…" : "Drop a new image here, or click to replace."}
             </p>
@@ -102,7 +102,7 @@ export function ImageDropzone({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://…"
-          className="border hairline bg-transparent px-3 py-2 text-sm w-full mt-2"
+          className="border border-input bg-background px-3 py-2 text-sm w-full mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />
       )}
     </div>

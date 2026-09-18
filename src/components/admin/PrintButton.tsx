@@ -1,9 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 export function PrintButton() {
-  return (
-    <button onClick={() => window.print()} className="btn-primary !px-4 !py-2">
-      Print
-    </button>
-  );
+  return <Button onClick={() => window.print()}>Print</Button>;
 }

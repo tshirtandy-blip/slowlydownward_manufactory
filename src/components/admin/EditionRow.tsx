@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { updateEditionStatus } from "@/app/admin/(protected)/products/actions";
+import { TableRow, TableCell } from "@/components/ui/table";
 
 const STATUS_OPTIONS = ["AVAILABLE", "WITHHELD", "DAMAGED"] as const;
 
@@ -24,9 +25,9 @@ export function EditionRow({
   const locked = status === "SOLD" || status === "RESERVED";
 
   return (
-    <tr className="border-b hairline last:border-0">
-      <td className="py-2 pr-4 font-medium">#{number}</td>
-      <td className="py-2 pr-4">
+    <TableRow>
+      <TableCell className="py-2 pr-4 font-medium">#{number}</TableCell>
+      <TableCell className="py-2 pr-4">
         {locked ? (
           <span className="text-stone">{status === "SOLD" ? "Sold" : status}</span>
         ) : (
@@ -34,7 +35,7 @@ export function EditionRow({
             defaultValue={status}
             disabled={pending}
             onChange={(e) => startTransition(() => updateEditionStatus(id, e.target.value as any))}
-            className="border hairline bg-transparent px-2 py-1 text-xs"
+            className="border border-input bg-background px-2 py-1 text-xs"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -43,8 +44,8 @@ export function EditionRow({
             ))}
           </select>
         )}
-      </td>
-      <td className="py-2 pr-4">{status === "SOLD" ? soldTo ?? "—" : ""}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="py-2 pr-4">{status === "SOLD" ? soldTo ?? "—" : ""}</TableCell>
+    </TableRow>
   );
 }
