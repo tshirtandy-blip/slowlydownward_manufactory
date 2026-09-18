@@ -360,6 +360,17 @@ model FooterLink {
   updatedAt DateTime @updatedAt
 }
 
+// One social media link shown at the bottom-left of every storefront page
+// (the same column as the "The Archive" blurb — see SiteFooter.tsx).
+// Managed from Admin > Settings > Footer, alongside the rest of the footer.
+model SocialLink {
+  id        String   @id @default(cuid())
+  platform  String   // e.g. "Instagram", "Facebook" — free text, shown as the link label
+  url       String
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 // Editable shipping cost + coverage for one of the three fixed regions
 // (UK / Europe / Rest of world) offered at checkout — see
 // src/lib/shipping.ts. Always exactly one row per key; managed from
@@ -632,6 +643,13 @@ enum CampaignAudience {
 model Campaign {
   id       String           @id @default(cuid())
   subject  String
+  // Mailchimp's own internal campaign name (its "title", separate from the
+  // subject line recipients actually saw) — only ever set on a row brought
+  // in by scripts/import-mailchimp-campaigns.ts; null for anything composed
+  // here, which has no such distinction. Useful in Admin > Campaigns for
+  // telling apart imported campaigns that share (or nearly share) a subject
+  // line — see the "duplicate campaigns" cleanup this was added for.
+  campaignName String?
   html     String
   audience CampaignAudience @default(ALL)
   status   CampaignStatus   @default(DRAFT)

@@ -3,16 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { FooterContentForm } from "./FooterContentForm";
 import { FooterLinksManager, type FooterLinkEditable } from "./FooterLinksManager";
+import { SocialLinksManager } from "./SocialLinksManager";
 
 export const dynamic = "force-dynamic";
 
 export default async function FooterSettingsPage() {
-  const [settings, links] = await Promise.all([
+  const [settings, links, socialLinks] = await Promise.all([
     getSiteSettings(),
     prisma.footerLink.findMany({
       orderBy: { sortOrder: "asc" },
       include: { page: { select: { id: true, title: true, slug: true } } },
     }),
+    prisma.socialLink.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
 
   const editableLinks: FooterLinkEditable[] = links.map((l) => ({
@@ -45,6 +47,15 @@ export default async function FooterSettingsPage() {
           page from here.
         </p>
         <FooterLinksManager links={editableLinks} />
+      </div>
+
+      <div className="border-t border-line mt-12 pt-8">
+        <h2 className="font-display text-xl mb-2">Social links</h2>
+        <p className="text-sm text-stone mb-6 max-w-xl">
+          Shown bottom-left on every storefront page, next to "{settings.footerColumn1Heading}". Any platform —
+          Instagram, Facebook, TikTok, whatever you're on.
+        </p>
+        <SocialLinksManager links={socialLinks.map((s) => ({ id: s.id, platform: s.platform, url: s.url }))} />
       </div>
     </div>
   );

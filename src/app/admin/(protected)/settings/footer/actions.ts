@@ -112,3 +112,54 @@ export async function addFooterLink(formData: FormData) {
   revalidatePath("/admin/pages");
   redirect(`/admin/pages/${page.id}`);
 }
+
+/** Syncs the social links list (Instagram, Facebook, whatever platforms
+ * you're on) to exactly what was submitted — same "diff the submitted
+ * rows against what's saved" pattern as updateFooterLinks above, just
+ * without a Page behind each row. Shown bottom-left on every storefront
+ * page (SiteFooter.tsx). */
+export async function updateSocialLinks(formData: FormData) {
+  await requireAdmin();
+
+  let rows: { id?: string; platform?: string; url?: string }[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("socialLinks") || "[]"));
+    if (Array.isArray(parsed)) rows = parsed;
+  } catch {
+    return; // malformed request — leave the links exactly as they are
+  }
+
+  const kept = rows.filter((r) => r.id && r.platform?.trim() && r.url?.trim());
+  const keptIds = kept.map((r) => r.id!);
+
+  await prisma.$transaction([
+    prisma.socialLink.deleteMany({ where: { id: { notIn: keptIds } } }),
+    ...kept.map((r, i) =>
+      prisma.socialLink.update({
+        where: { id: r.id },
+        data: { platform: r.platform!.trim(), url: r.url!.trim(), sortOrder: i },
+      })
+    ),
+  ]);
+
+  revalidateFooter();
+}
+
+/** Adds one new social link row (Admin > Settings > Footer's "+ Add a
+ * social link" form) — platform is free text (e.g. "Instagram") rather
+ * than a fixed list, so any platform can be added without a code change. */
+export async function addSocialLink(formData: FormData) {
+  await requireAdmin();
+
+  const platform = String(formData.get("platform") || "").trim();
+  const url = String(formData.get("url") || "").trim();
+  if (!platform || !url) throw new Error("Both a platform name and a URL are required.");
+
+  const maxOrder = await prisma.socialLink.aggregate({ _max: { sortOrder: true } });
+  await prisma.socialLink.create({
+    data: { platform, url, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
+  });
+
+  revalidateFooter();
+  revalidatePath("/admin/settings/footer");
+}

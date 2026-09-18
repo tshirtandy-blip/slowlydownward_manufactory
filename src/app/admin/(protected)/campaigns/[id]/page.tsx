@@ -64,6 +64,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
         ← Campaigns
       </Link>
       <h1 className="font-display text-2xl mt-2 mb-1">{campaign.subject}</h1>
+      {campaign.campaignName && <p className="text-sm text-stone mb-1">Mailchimp name: {campaign.campaignName}</p>}
       <p className="text-stone text-sm mb-8">
         {STATUS_LABEL[campaign.status] ?? campaign.status} — {campaign.audience === "CUSTOMERS" ? "Customers" : "Everyone"}{" "}
         opted in

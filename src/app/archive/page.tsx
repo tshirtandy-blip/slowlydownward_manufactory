@@ -22,7 +22,7 @@ async function getSentCampaigns() {
   return prisma.campaign.findMany({
     where: { status: "SENT" },
     orderBy: { sentAt: "desc" },
-    select: { id: true, subject: true, sentAt: true },
+    select: { id: true, subject: true, campaignName: true, sentAt: true },
   });
 }
 
@@ -48,7 +48,10 @@ export default async function ArchivePage() {
                   href={`/archive/${c.id}`}
                   className="flex items-baseline justify-between gap-6 py-5 hover:text-stone"
                 >
-                  <span className="font-display text-lg">{c.subject}</span>
+                  <span>
+                    <span className="font-display text-lg block">{c.subject}</span>
+                    {c.campaignName && <span className="text-xs text-stone">{c.campaignName}</span>}
+                  </span>
                   <span className="text-xs text-stone whitespace-nowrap">
                     {c.sentAt?.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                   </span>

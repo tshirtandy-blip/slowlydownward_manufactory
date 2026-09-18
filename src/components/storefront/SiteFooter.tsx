@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { FooterLinkItem } from "@/lib/footer";
+import type { FooterLinkItem, SocialLinkItem } from "@/lib/footer";
 import { NewsletterSignupForm } from "@/components/storefront/NewsletterSignupForm";
 
 export type FooterSettings = {
@@ -18,7 +18,15 @@ export type FooterSettings = {
 // from inside a "use client" page like the cart, which gets these same
 // values passed down from its own server-rendered parent instead. Every
 // piece of text here is editable from Admin > Settings > Footer.
-export function SiteFooter({ settings, links }: { settings: FooterSettings; links: FooterLinkItem[] }) {
+export function SiteFooter({
+  settings,
+  links,
+  socialLinks = [],
+}: {
+  settings: FooterSettings;
+  links: FooterLinkItem[];
+  socialLinks?: SocialLinkItem[];
+}) {
   // A light buffer on top of whatever bottom padding the page's own last
   // section already has (every content block already ends with its own
   // py-8 to py-16) — this used to be mt-24 on top of that, which is what
@@ -30,6 +38,17 @@ export function SiteFooter({ settings, links }: { settings: FooterSettings; link
         <div>
           <h3 className="label-caps mb-4">{settings.footerColumn1Heading}</h3>
           <p className="text-sm text-stone max-w-xs whitespace-pre-line">{settings.footerColumn1Body}</p>
+          {socialLinks.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone">
+              {socialLinks.map((s) => (
+                <li key={s.id}>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:text-ink underline">
+                    {s.platform}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div>
           <h3 className="label-caps mb-4">{settings.footerColumn2Heading}</h3>

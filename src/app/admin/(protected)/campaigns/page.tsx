@@ -57,6 +57,7 @@ export default async function CampaignsPage() {
                   <Link href={`/admin/campaigns/${c.id}`} className="underline">
                     {c.subject}
                   </Link>
+                  {c.campaignName && <span className="block text-xs text-stone">{c.campaignName}</span>}
                 </td>
                 <td className="p-3 text-stone">{c.audience === "CUSTOMERS" ? "Customers" : "Everyone"}</td>
                 <td className="p-3 text-stone">{STATUS_LABEL[c.status] ?? c.status}</td>

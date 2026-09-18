@@ -136,6 +136,12 @@ async function main() {
 
   for (const c of campaigns) {
     const subject = c.settings?.subject_line?.trim() || c.settings?.title?.trim();
+    // Mailchimp's internal campaign name — kept separately from `subject`
+    // even when it's the same text, so Admin > Campaigns can show it as a
+    // secondary label for telling apart campaigns that share a subject
+    // line. Only worth storing when it actually differs from the subject.
+    const campaignName =
+      c.settings?.title?.trim() && c.settings.title.trim() !== subject ? c.settings.title.trim() : null;
     if (!subject) {
       console.warn(`- ${c.id}: no subject line — skipping`);
       skipped++;
@@ -162,6 +168,7 @@ async function main() {
       where: { mailchimpCampaignId: c.id },
       update: {
         subject,
+        campaignName,
         html,
         sentAt: c.send_time ? new Date(c.send_time) : undefined,
         recipientCount: c.emails_sent ?? undefined,
@@ -172,6 +179,7 @@ async function main() {
       },
       create: {
         subject,
+        campaignName,
         html,
         audience: "ALL", // Mailchimp's own segment for that send isn't something we can map back to ours
         status: "SENT",

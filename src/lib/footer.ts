@@ -22,11 +22,30 @@ export async function getFooterLinks(): Promise<FooterLinkItem[]> {
   }
 }
 
+// One Instagram/Facebook/whatever-platform link, shown bottom-left in the
+// footer (same column as the "The Archive" blurb) — see SocialLink model
+// and Admin > Settings > Footer.
+export type SocialLinkItem = { id: string; platform: string; url: string };
+
+export async function getSocialLinks(): Promise<SocialLinkItem[]> {
+  try {
+    const links = await prisma.socialLink.findMany({ orderBy: { sortOrder: "asc" } });
+    return links.map((l) => ({ id: l.id, platform: l.platform, url: l.url }));
+  } catch {
+    // Database unreachable, or this migration hasn't run yet.
+    return [];
+  }
+}
+
 /** Everything <SiteFooter> needs, fetched together — the one call every
  * page that renders the footer makes (see SiteFooter.tsx's own comment for
  * why it takes props instead of fetching this itself). */
-export async function getFooterProps(): Promise<{ settings: FooterSettings; links: FooterLinkItem[] }> {
-  const [siteSettings, links] = await Promise.all([getSiteSettings(), getFooterLinks()]);
+export async function getFooterProps(): Promise<{
+  settings: FooterSettings;
+  links: FooterLinkItem[];
+  socialLinks: SocialLinkItem[];
+}> {
+  const [siteSettings, links, socialLinks] = await Promise.all([getSiteSettings(), getFooterLinks(), getSocialLinks()]);
   const {
     footerColumn1Heading,
     footerColumn1Body,
@@ -47,5 +66,6 @@ export async function getFooterProps(): Promise<{ settings: FooterSettings; link
       footerBadgeText,
     },
     links,
+    socialLinks,
   };
 }
