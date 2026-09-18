@@ -21,7 +21,7 @@ export default async function HeaderSettingsPage() {
 
       <div className="mb-8">
         <p className="label-caps mb-2">Preview — this is your site's actual header</p>
-        <div className="border hairline overflow-hidden">
+        <div className="border border-line overflow-hidden">
           <SiteHeader />
         </div>
       </div>

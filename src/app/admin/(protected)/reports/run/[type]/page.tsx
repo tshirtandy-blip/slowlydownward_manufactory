@@ -4,6 +4,9 @@ import { getReportType } from "@/lib/report-types";
 import { saveReport } from "../../actions";
 import { ReportTable } from "@/components/admin/ReportTable";
 import { SaveButton } from "@/components/admin/SaveButton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -29,48 +32,38 @@ export default async function RunReportPage({
         ← Reports
       </Link>
       <h1 className="font-display text-2xl mt-2 mb-1">{reportType.label}</h1>
-      <p className="text-sm text-stone mb-8">{reportType.description}</p>
+      <p className="mb-8 text-sm text-stone">{reportType.description}</p>
 
       {reportType.needsDateRange && (
-        <form method="get" className="flex items-end gap-3 mb-6">
+        <form method="get" className="mb-6 flex items-end gap-3">
           <div>
-            <label className="label-caps block mb-2">From</label>
-            <input
-              type="date"
-              name="from"
-              defaultValue={from}
-              className="border hairline bg-transparent px-3 py-2 text-sm"
-            />
+            <Label htmlFor="reportFrom" className="label-caps mb-2 block">
+              From
+            </Label>
+            <Input id="reportFrom" type="date" name="from" defaultValue={from} className="border-line" />
           </div>
           <div>
-            <label className="label-caps block mb-2">To</label>
-            <input
-              type="date"
-              name="to"
-              defaultValue={to}
-              className="border hairline bg-transparent px-3 py-2 text-sm"
-            />
+            <Label htmlFor="reportTo" className="label-caps mb-2 block">
+              To
+            </Label>
+            <Input id="reportTo" type="date" name="to" defaultValue={to} className="border-line" />
           </div>
-          <button type="submit" className="btn-secondary !px-4 !py-2">
+          <Button type="submit" variant="secondary">
             Update
-          </button>
-          <p className="text-xs text-stone pb-2.5">Defaults to the last 30 days if left blank.</p>
+          </Button>
+          <p className="pb-2.5 text-xs text-stone">Defaults to the last 30 days if left blank.</p>
         </form>
       )}
 
-      <div className="flex items-center gap-4 mb-6">
-        <a href={exportHref} className="btn-secondary !px-4 !py-2">
-          Export CSV
-        </a>
+      <div className="mb-6 flex items-center gap-4">
+        <Button asChild variant="secondary">
+          <a href={exportHref}>Export CSV</a>
+        </Button>
         <form action={saveReport} className="flex items-center gap-2">
           <input type="hidden" name="type" value={reportType.key} />
           <input type="hidden" name="from" value={from} />
           <input type="hidden" name="to" value={to} />
-          <input
-            name="name"
-            placeholder="Name this report to save it…"
-            className="border hairline bg-transparent px-3 py-2 text-sm w-56"
-          />
+          <Input name="name" placeholder="Name this report to save it…" className="w-56 border-line" />
           <SaveButton>Save</SaveButton>
         </form>
       </div>

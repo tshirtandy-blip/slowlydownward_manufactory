@@ -5,6 +5,7 @@ import { getReportType } from "@/lib/report-types";
 import { ReportTable } from "@/components/admin/ReportTable";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
 import { deleteSavedReport } from "../../actions";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function SavedReportPage({ params }: { params: { id: string
       <Link href="/admin/reports" className="label-caps text-stone hover:text-ink">
         ← Reports
       </Link>
-      <div className="flex items-center justify-between mt-2 mb-1">
+      <div className="mt-2 mb-1 flex items-center justify-between">
         <h1 className="font-display text-2xl">{saved.name}</h1>
         <form action={deleteSavedReport.bind(null, saved.id)}>
           <ConfirmSubmitButton
@@ -39,7 +40,7 @@ export default async function SavedReportPage({ params }: { params: { id: string
       </div>
       <p className="text-sm text-stone">{reportType.label}</p>
       {reportType.needsDateRange && (
-        <p className="text-xs text-stone mb-8">
+        <p className="mb-8 text-xs text-stone">
           {savedParams.from || savedParams.to
             ? `${savedParams.from || "the beginning"} to ${savedParams.to || "today"}`
             : "Last 30 days"}{" "}
@@ -48,9 +49,9 @@ export default async function SavedReportPage({ params }: { params: { id: string
       )}
 
       <div className="mb-6">
-        <a href={exportHref} className="btn-secondary !px-4 !py-2">
-          Export CSV
-        </a>
+        <Button asChild variant="secondary">
+          <a href={exportHref}>Export CSV</a>
+        </Button>
       </div>
 
       <ReportTable table={table} />

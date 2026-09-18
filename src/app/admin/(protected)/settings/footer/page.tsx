@@ -37,7 +37,7 @@ export default async function FooterSettingsPage() {
       <h2 className="font-display text-xl mb-4">Text</h2>
       <FooterContentForm settings={settings} />
 
-      <div className="border-t hairline mt-12 pt-8">
+      <div className="border-t border-line mt-12 pt-8">
         <h2 className="font-display text-xl mb-2">Links</h2>
         <p className="text-sm text-stone mb-6 max-w-xl">
           Each link opens a page built in Admin → Pages — you can rename how it reads in the footer without

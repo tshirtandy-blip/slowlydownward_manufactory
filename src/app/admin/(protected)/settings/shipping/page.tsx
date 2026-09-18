@@ -23,7 +23,7 @@ export default async function ShippingSettingsPage() {
 
       <ShippingSettingsForm zones={zones} />
 
-      <div className="border-t hairline mt-12 pt-8">
+      <div className="border-t border-line mt-12 pt-8">
         <h2 className="font-display text-xl mb-2">Royal Mail price list</h2>
         <p className="text-sm text-stone mb-6 max-w-xl">
           Royal Mail doesn't offer a live rate quote the way UPS does — your cost is fixed by your contract to a

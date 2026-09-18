@@ -27,7 +27,7 @@ export default async function TypographySettingsPage() {
         customFonts={customFonts}
       />
 
-      <hr className="hairline my-10" />
+      <hr className="border-t border-line my-10" />
 
       <CustomFontsManager fonts={customFonts} />
     </div>

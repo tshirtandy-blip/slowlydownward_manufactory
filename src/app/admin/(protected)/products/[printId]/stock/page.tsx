@@ -61,7 +61,7 @@ export default async function StockDetailsPage({
       </div>
 
       {print.editionSize === null ? (
-        <p className="text-sm text-stone border hairline p-4">
+        <p className="text-sm text-stone border border-line p-4">
           This is an open edition — not limited or numbered, so there are no individual numbered copies to
           list here. Switch it back to a number on the product's own page if you'd like to track numbered
           stock for it after all.

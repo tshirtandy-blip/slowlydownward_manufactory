@@ -5,6 +5,7 @@ import { StatTile } from "@/components/admin/StatTile";
 import { LiveStatsWidgets } from "@/components/admin/LiveStatsWidgets";
 import { RevenueChart, TopPrintsChart } from "@/components/admin/DashboardCharts";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,19 +41,23 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="border hairline p-6">
-          <h2 className="label-caps mb-4">Revenue — last 14 days</h2>
-          <RevenueChart data={revenue} />
-        </div>
-        <div className="border hairline p-6">
-          <h2 className="label-caps mb-4">Top prints by units sold</h2>
-          {topPrints.length > 0 ? (
-            <TopPrintsChart data={topPrints} />
-          ) : (
-            <p className="text-stone text-sm py-16 text-center">No sales yet.</p>
-          )}
-        </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Card className="border-line shadow-none">
+          <CardContent className="p-6">
+            <h2 className="label-caps mb-4">Revenue — last 14 days</h2>
+            <RevenueChart data={revenue} />
+          </CardContent>
+        </Card>
+        <Card className="border-line shadow-none">
+          <CardContent className="p-6">
+            <h2 className="label-caps mb-4">Top prints by units sold</h2>
+            {topPrints.length > 0 ? (
+              <TopPrintsChart data={topPrints} />
+            ) : (
+              <p className="py-16 text-center text-sm text-stone">No sales yet.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
