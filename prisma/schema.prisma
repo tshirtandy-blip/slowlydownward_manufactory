@@ -177,6 +177,9 @@ model User {
   createdOrders Order[]     @relation("CreatedOrders")
   auditLogs     AuditLog[]
   campaigns     Campaign[]
+  coaTemplatesCreated       CoaTemplate[] @relation("CoaTemplateAuthor")
+  editionConfirmedByOrders  OrderItem[]   @relation("EditionConfirmedBy")
+  coaPrintedOrderItems      OrderItem[]   @relation("CoaPrintedBy")
 }
 
 model Customer {
@@ -258,6 +261,35 @@ model Collection {
   prints Print[]
 }
 
+// A Certificate of Authenticity template — owner-authored HTML/CSS,
+// rendered to PDF at pack time (see src/lib/coa-pdf.ts). printId null is
+// the single global default (see resolveCoaTemplate in
+// src/lib/coa-template.ts, same lazy-singleton idea as SiteSettings);
+// printId set is an override specific to that one product. The edition
+// NUMBER itself is never stored here — it's resolved per order item at
+// generation time from OrderItem/Edition and substituted into bodyHtml's
+// {{editionNumber}} token.
+model CoaTemplate {
+  id       String  @id @default(cuid())
+  printId  String? @unique
+  print    Print?  @relation(fields: [printId], references: [id])
+  name     String  @default("Certificate of Authenticity")
+  pageSize String  @default("A5") // "A4" | "A5" | "Letter"
+  // Owner-authored HTML containing {{mergeField}} placeholder tokens — see
+  // src/lib/coa-template.ts for the fixed list of supported tokens.
+  // Sanitized (sanitize-html, an expanded allowlist — see
+  // src/lib/sanitize.ts's sanitizeCoaHtml) before being written here.
+  bodyHtml String  @default("")
+  // Owner-authored CSS, kept separate so the editor can show it in its own
+  // pane and so sanitization only has to reason about the HTML body.
+  css      String  @default("")
+
+  createdByUserId String?
+  createdBy       User?    @relation("CoaTemplateAuthor", fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model Print {
   id               String   @id @default(cuid())
   collectionId     String?
@@ -314,6 +346,7 @@ model Print {
 
   editions  Edition[]
   orderItems OrderItem[]
+  coaTemplate CoaTemplate?
 }
 
 // Manageable list of options offered in the product editor's "Medium"
@@ -565,6 +598,30 @@ model OrderItem {
   // someone else's still-active one for the same number.
   reservationToken       String?
   unitPriceMinor         Int
+
+  // Packer-confirmed edition number checkbox (Admin > Packing) — ticked
+  // once the packer has visually confirmed the physical copy they're
+  // holding matches this item's edition number.
+  editionConfirmedByPacker Boolean   @default(false)
+  editionConfirmedAt       DateTime?
+  editionConfirmedByUserId String?
+  editionConfirmedBy       User?     @relation("EditionConfirmedBy", fields: [editionConfirmedByUserId], references: [id])
+
+  // Set once this item's Certificate of Authenticity has been generated
+  // and handed to the browser to print (see generateCoaPdf in
+  // src/app/admin/(protected)/pack/actions.ts).
+  coaPrintedAt       DateTime?
+  coaPrintedByUserId String?
+  coaPrintedBy       User?     @relation("CoaPrintedBy", fields: [coaPrintedByUserId], references: [id])
+
+  // Item-level packed flag — the source of truth for "has this specific
+  // print been packed". Set together for every item on an order the
+  // moment "Confirm all packed" succeeds, in the same transaction as
+  // Order.status -> PACKED, so Order.status/packedAt/packedByUserId (read
+  // everywhere else in the app already) stay accurate without changes
+  // elsewhere.
+  packed   Boolean   @default(false)
+  packedAt DateTime?
 
   createdAt DateTime @default(now())
 }
