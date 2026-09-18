@@ -39,6 +39,11 @@ with something that does exactly what this business needs and nothing else.
 - **Integration modules** for UPS, Royal Mail (Click & Drop), Mailchimp, and
   Xero — real API client code, wired into the order flow (see "Integrations"
   below for exactly what each does and what you need to supply).
+- **Campaigns & newsletter archive** — Admin → Campaigns composes and sends
+  marketing email via Resend Broadcasts (Mailchimp's old campaign feature,
+  replaced); every campaign sent from there is also public at `/archive`,
+  so customers can browse past newsletters. See "Resend Broadcasts
+  (campaigns)" below.
 
 ## Getting it running locally
 
@@ -357,12 +362,32 @@ extra to sign up for.
    `RESEND_WEBHOOK_SECRET` in Vercel's Environment Variables (then redeploy).
    Campaigns can be composed and sent without this step — you'd just have no
    opens/clicks numbers and no automatic bounce cleanup until it's done.
-3. **One-off historical import** — if you're bringing over your existing
-   Mailchimp subscriber list, that's a deliberate bulk backfill (thousands
-   of contacts, rate-limited), not something this app does automatically on
-   every page load. Ask Claude to run it as a one-time job once both API
-   keys are available, or write a small script against
-   `upsertResendContact` yourself.
+3. **Newsletter archive** — every campaign sent from here is automatically
+   public at `/archive` (and `/archive/<id>` for each one) — nothing extra
+   to publish, it's reading the same `Campaign` row the send just created. A
+   still-draft or scheduled campaign never shows there; only `SENT` ones. A
+   link to it sits under the newsletter signup form in the footer.
+4. **One-off historical import** — brings your existing Mailchimp campaign
+   history into that same archive, so it isn't just Resend-forward from
+   today. This is a deliberate one-time backfill (not something the app
+   does automatically), and it needs your production database, not the
+   local dev one:
+   ```bash
+   npx prisma migrate deploy   # if you haven't already run the latest migration
+   MAILCHIMP_API_KEY="..." \
+   DATABASE_URL="<Supabase DIRECT connection string>" \
+   DIRECT_URL="<same>" \
+   npm run import:mailchimp-campaigns
+   ```
+   Pulls every already-sent Mailchimp campaign (subject + HTML + send date)
+   and upserts it into `Campaign` keyed on its Mailchimp id
+   (`mailchimpCampaignId`) — safe to re-run, a second pass just updates
+   rows it already imported rather than duplicating them. See
+   `scripts/import-mailchimp-campaigns.ts`. Ask Claude to run this once
+   both API keys are available if you'd rather not run it yourself.
+   For syncing your subscriber *list* into Resend (rather than campaign
+   history), see `upsertResendContact` — that's a separate concern from
+   this script.
 
 ### Xero
 
