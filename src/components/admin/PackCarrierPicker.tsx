@@ -53,7 +53,7 @@ export function PackCarrierPicker({
 
   // "Confirm parcel size and customs value" is only needed for a UPS
   // shipment leaving the UK — a UK-bound UPS parcel, Royal Mail, or a
-  // customer collection go straight to "Mark packed & create label".
+  // customer collection go straight to "Print label".
   const needsConfirmStep = carrier === "UPS" && requiresCustoms;
   const [confirmed, setConfirmed] = useState(false);
   const [lengthCm, setLengthCm] = useState(String(defaultDims.lengthCm));
@@ -211,7 +211,7 @@ export function PackCarrierPicker({
 
       {!showConfirmPanel && (
         <Button variant="secondary" onClick={handleSubmit} disabled={pending}>
-          {pending ? "Packing…" : "Mark packed & create label"}
+          {pending ? "Creating label…" : "Print label"}
         </Button>
       )}
     </div>

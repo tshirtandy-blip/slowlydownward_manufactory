@@ -25,12 +25,15 @@ export default async function PackPage() {
     items: order.items.map((item) => ({
       id: item.id,
       title: item.print.title,
+      primaryImageUrl: item.print.primaryImageUrl,
       editionLabel: item.edition
         ? `#${item.edition.number}`
         : item.print.editionSize === null
         ? "Open edition"
         : "Not assigned",
       drawerLocation: item.print.drawerLocation,
+      editionConfirmedByPacker: item.editionConfirmedByPacker,
+      coaPrinted: !!item.coaPrintedAt,
     })),
     costs: {
       royalMail: costs[i].royalMail,

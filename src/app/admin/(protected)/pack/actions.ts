@@ -10,6 +10,8 @@ import { getStoreAddress, storeAddressConfigured } from "@/lib/store-address";
 import { getCustomsSummary, getPackageDimensionsCm, withCustomsValueOverride } from "@/lib/customs";
 import { buildCommercialInvoicePdf } from "@/lib/commercial-invoice";
 import { getRoyalMailRates, getRoyalMailCost } from "@/lib/royal-mail-rates";
+import { buildCoaPdf } from "@/lib/coa-pdf";
+import { resolveCoaTemplate } from "@/lib/coa-template";
 
 /** An order needs customs paperwork once it's leaving the UK — the UK left
  * the EU customs union, so this is true for Europe as well as ROW, not just
@@ -37,7 +39,7 @@ export async function getCarrierCosts(orderId: string) {
   // This file is "use server", which makes every export here a directly
   // invocable server action regardless of who imports it — so this checks
   // its own auth rather than relying on the page that happens to call it
-  // today, same as packOrder below.
+  // today, same as every other action below.
   const session = await getServerSession(authOptions);
   if (!session || !["ADMIN", "PACKER"].includes(session.user.role)) {
     throw new Error("Not authorised");
@@ -133,7 +135,147 @@ export type PackOverrides = {
   customsValueMinor?: number;
 };
 
-export async function packOrder(
+/** Step 1 of the pack flow: generates one PDF containing a Certificate of
+ * Authenticity page for every item on the order (each rendered from that
+ * item's own product's COA template, or the global default — see
+ * resolveCoaTemplate in src/lib/coa-template.ts), and stamps
+ * coaPrintedAt/coaPrintedByUserId on every item in the same transaction.
+ * Returns the PDF as base64 for the browser to open in a new tab (see
+ * PackQueueList.tsx) — nothing about "printed" here means a physical
+ * printer necessarily fired; it means the packer has been handed the PDF
+ * to print, same as clicking Print in any browser's PDF viewer. */
+export async function generateCoaPdf(
+  orderId: string
+): Promise<{ ok: true; pdfBase64: string } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session || !["ADMIN", "PACKER"].includes(session.user.role)) {
+    return { ok: false, error: "Not authorised" };
+  }
+
+  try {
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: { include: { print: true, edition: true } } },
+    });
+
+    if (order.items.length === 0) {
+      return { ok: false, error: "This order has no items." };
+    }
+
+    const pdf = await buildCoaPdf({
+      order,
+      items: order.items,
+      templateFor: (printId) => resolveCoaTemplate(printId),
+    });
+
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.orderItem.updateMany({
+        where: { orderId },
+        data: { coaPrintedAt: now, coaPrintedByUserId: session.user.id },
+      }),
+      prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "coa_printed",
+          entityType: "Order",
+          entityId: orderId,
+          meta: { itemIds: order.items.map((item) => item.id) },
+        },
+      }),
+    ]);
+
+    return { ok: true, pdfBase64: pdf.toString("base64") };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Couldn't generate the Certificate of Authenticity.",
+    };
+  }
+}
+
+/** Step 1b, per item: the packer ticking (or unticking) the edition-number
+ * checkbox next to one item in the queue — independent of COA printing,
+ * can happen before or after it, in any order across the items on one
+ * order. */
+export async function confirmEditionNumber(
+  orderItemId: string,
+  confirmed: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session || !["ADMIN", "PACKER"].includes(session.user.role)) {
+    return { ok: false, error: "Not authorised" };
+  }
+
+  try {
+    await prisma.orderItem.update({
+      where: { id: orderItemId },
+      data: confirmed
+        ? { editionConfirmedByPacker: true, editionConfirmedAt: new Date(), editionConfirmedByUserId: session.user.id }
+        : { editionConfirmedByPacker: false, editionConfirmedAt: null, editionConfirmedByUserId: null },
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't update the edition number checkbox." };
+  }
+}
+
+/** Step 2: the order-level gate. Only succeeds once EVERY item has both a
+ * printed COA and a ticked edition-number checkbox — re-checked here
+ * server-side (not just trusted from the client) since this is what
+ * actually flips the order to PACKED. Sets OrderItem.packed for every item
+ * and Order.status/packedAt/packedByUserId together in one transaction, so
+ * every existing page that already reads Order.status (Orders list/
+ * detail, reporting, the AuditLog) keeps working unchanged. */
+export async function confirmAllPacked(orderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session || !["ADMIN", "PACKER"].includes(session.user.role)) {
+    return { ok: false, error: "Not authorised" };
+  }
+
+  try {
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (order.items.some((item) => !item.coaPrintedAt)) {
+      return { ok: false, error: "Print the Certificate of Authenticity for every item first." };
+    }
+    if (order.items.some((item) => !item.editionConfirmedByPacker)) {
+      return { ok: false, error: "Tick the edition number checkbox for every item first." };
+    }
+
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.orderItem.updateMany({ where: { orderId }, data: { packed: true, packedAt: now } }),
+      prisma.order.update({
+        where: { id: orderId },
+        data: { status: "PACKED", packedByUserId: session.user.id, packedAt: now },
+      }),
+      prisma.auditLog.create({
+        data: { userId: session.user.id, action: "order_confirmed_packed", entityType: "Order", entityId: orderId, meta: {} },
+      }),
+    ]);
+
+    // Same reasoning as printLabel below (and the old packOrder before
+    // it): NOT revalidating /admin/pack, so a just-confirmed order doesn't
+    // vanish from PackQueueList's frozen snapshot before the packer can
+    // move on to the carrier/label step.
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't confirm packed." };
+  }
+}
+
+/** Step 3: carrier choice + label creation — the same Royal Mail/UPS logic
+ * that used to live in packOrder, now requiring the order to already be
+ * PACKED (i.e. confirmAllPacked has already run) rather than setting that
+ * status itself. */
+export async function printLabel(
   orderId: string,
   carrier: PackCarrier,
   overrides?: PackOverrides
@@ -153,13 +295,13 @@ export async function packOrder(
   // generic error toast (easy to miss — it's what looked like a red
   // message flashing and vanishing).
   try {
-    return await packOrderUnsafe(orderId, carrier, session.user.id, overrides);
+    return await printLabelUnsafe(orderId, carrier, session.user.id, overrides);
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Packing failed unexpectedly." };
+    return { ok: false, error: err instanceof Error ? err.message : "Creating the label failed unexpectedly." };
   }
 }
 
-async function packOrderUnsafe(
+async function printLabelUnsafe(
   orderId: string,
   carrier: PackCarrier,
   userId: string,
@@ -169,6 +311,11 @@ async function packOrderUnsafe(
     where: { id: orderId },
     include: { items: { include: { print: true } }, customer: true },
   });
+
+  if (order.status !== "PACKED") {
+    throw new Error("This order hasn't been confirmed as packed yet — use \"Confirm all packed\" first.");
+  }
+
   const address = order.shippingAddress as any;
 
   let trackingNumber: string | undefined;
@@ -280,12 +427,11 @@ async function packOrderUnsafe(
     }
   }
 
+  // Order.status is already "PACKED" (set by confirmAllPacked above) — this
+  // only fills in what the label step itself produced.
   await prisma.order.update({
     where: { id: orderId },
     data: {
-      status: "PACKED",
-      packedByUserId: userId,
-      packedAt: new Date(),
       trackingNumber,
       labelUrl,
       shippingCarrier: carrier,
@@ -295,17 +441,15 @@ async function packOrderUnsafe(
   });
 
   await prisma.auditLog.create({
-    data: { userId, action: "order_packed", entityType: "Order", entityId: orderId, meta: { carrier } },
+    data: { userId, action: "label_created", entityType: "Order", entityId: orderId, meta: { carrier } },
   });
 
-  // Deliberately NOT revalidating /admin/pack here. That list only shows
-  // orders still awaiting packing, so the moment this one flips to PACKED
-  // it would drop out of the list — refreshing this page immediately would
-  // yank the just-packed order (and the label/print button, or an error
-  // message) off the screen before a packer could read or use it. The
-  // order/orders pages are still revalidated so they're accurate whenever
-  // someone next opens them; the packing queue simply catches up with this
-  // order's absence next time it's loaded or refreshed.
+  // Deliberately NOT revalidating /admin/pack here — same reasoning as
+  // confirmAllPacked above: a just-labelled order should stay put in
+  // PackQueueList's frozen snapshot until the packer navigates away, not
+  // vanish (or show an error with nothing to retry) the moment this page
+  // quietly re-runs behind the scenes. The order/orders pages are still
+  // revalidated so they're accurate whenever someone next opens them.
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
 
