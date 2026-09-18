@@ -4,11 +4,13 @@ import { useEffect, useState, useTransition } from "react";
 import type { PackCarrier, PackOverrides } from "@/app/admin/(protected)/pack/actions";
 import { formatMinor } from "@/lib/money";
 import { ShippingLabelPreview } from "./ShippingLabelPreview";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type CarrierQuote = { amountMinor: number; currency: string; service: string; overWeight?: boolean } | null;
 type Dims = { lengthCm: number; widthCm: number; heightCm: number };
 
-const dimInputClass = "block w-16 border hairline bg-transparent px-2 py-1 text-sm";
+const dimInputClass = "block w-16 border border-input bg-background px-2 py-1 text-sm";
 
 export function PackCarrierPicker({
   orderId,
@@ -71,7 +73,7 @@ export function PackCarrierPicker({
         <span className="label-caps text-stone">
           Packed via {carrier === "ROYAL_MAIL" ? "Royal Mail" : carrier === "UPS" ? "UPS" : "Collection"}
         </span>
-        {result.warning && <p className="text-xs text-accent mt-1">{result.warning}</p>}
+        {result.warning && <p className="mt-1 text-xs text-accent">{result.warning}</p>}
         <div className="mt-2">
           <ShippingLabelPreview labelUrl={result.labelUrl} trackingNumber={result.trackingNumber} carrier={carrier} />
         </div>
@@ -113,9 +115,16 @@ export function PackCarrierPicker({
 
   return (
     <div>
-      <div className="space-y-2 mb-4">
+      <div className="mb-4 space-y-2">
         <label className="flex items-center gap-3 text-sm">
-          <input type="radio" name={`carrier-${orderId}`} checked={carrier === "ROYAL_MAIL"} onChange={() => setCarrier("ROYAL_MAIL")} disabled={!royalMail} />
+          <input
+            type="radio"
+            name={`carrier-${orderId}`}
+            checked={carrier === "ROYAL_MAIL"}
+            onChange={() => setCarrier("ROYAL_MAIL")}
+            disabled={!royalMail}
+            className="accent-ink"
+          />
           <span className="w-24">Royal Mail</span>
           {royalMail ? (
             <span className="text-stone">
@@ -134,6 +143,7 @@ export function PackCarrierPicker({
             checked={carrier === "UPS"}
             onChange={() => setCarrier("UPS")}
             disabled={!ups}
+            className="accent-ink"
           />
           <span className="w-24">UPS</span>
           {ups ? (
@@ -145,56 +155,64 @@ export function PackCarrierPicker({
           )}
         </label>
         <label className="flex items-center gap-3 text-sm">
-          <input type="radio" name={`carrier-${orderId}`} checked={carrier === "COLLECTION"} onChange={() => setCarrier("COLLECTION")} />
+          <input
+            type="radio"
+            name={`carrier-${orderId}`}
+            checked={carrier === "COLLECTION"}
+            onChange={() => setCarrier("COLLECTION")}
+            className="accent-ink"
+          />
           <span className="w-24">Collection</span>
           <span className="text-stone">Customer collecting in person — no label needed</span>
         </label>
       </div>
 
       {showConfirmPanel && (
-        <div className="border hairline bg-line/20 p-3 mb-3 space-y-2">
-          <p className="label-caps text-stone">Confirm parcel size and customs value</p>
-          <p className="text-xs text-stone">
-            This order is shipping outside the UK, so UPS needs customs paperwork attached electronically. Check the
-            figures below — pre-filled from the ordered print(s) — then confirm to create the label.
-          </p>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="text-xs text-stone">
-              Length (cm)
-              <input type="number" min="1" value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} className={dimInputClass} />
-            </label>
-            <label className="text-xs text-stone">
-              Width (cm)
-              <input type="number" min="1" value={widthCm} onChange={(e) => setWidthCm(e.target.value)} className={dimInputClass} />
-            </label>
-            <label className="text-xs text-stone">
-              Height (cm)
-              <input type="number" min="1" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} className={dimInputClass} />
-            </label>
-            <label className="text-xs text-stone">
-              Customs value ({currency})
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={customsValue}
-                onChange={(e) => setCustomsValue(e.target.value)}
-                className="block w-24 border hairline bg-transparent px-2 py-1 text-sm"
-              />
-            </label>
-          </div>
-          <button type="button" onClick={() => setConfirmed(true)} className="btn-secondary !px-4 !py-2 text-sm">
-            Confirm
-          </button>
-        </div>
+        <Card className="mb-3 border-line bg-line/20 shadow-none">
+          <CardContent className="space-y-2 p-3">
+            <p className="label-caps text-stone">Confirm parcel size and customs value</p>
+            <p className="text-xs text-stone">
+              This order is shipping outside the UK, so UPS needs customs paperwork attached electronically. Check the
+              figures below — pre-filled from the ordered print(s) — then confirm to create the label.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-xs text-stone">
+                Length (cm)
+                <input type="number" min="1" value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} className={dimInputClass} />
+              </label>
+              <label className="text-xs text-stone">
+                Width (cm)
+                <input type="number" min="1" value={widthCm} onChange={(e) => setWidthCm(e.target.value)} className={dimInputClass} />
+              </label>
+              <label className="text-xs text-stone">
+                Height (cm)
+                <input type="number" min="1" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} className={dimInputClass} />
+              </label>
+              <label className="text-xs text-stone">
+                Customs value ({currency})
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={customsValue}
+                  onChange={(e) => setCustomsValue(e.target.value)}
+                  className="block w-24 border border-input bg-background px-2 py-1 text-sm"
+                />
+              </label>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmed(true)}>
+              Confirm
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      {result.error && <p className="text-xs text-accent mb-2">{result.error}</p>}
+      {result.error && <p className="mb-2 text-xs text-accent">{result.error}</p>}
 
       {!showConfirmPanel && (
-        <button onClick={handleSubmit} disabled={pending} className="btn-secondary !px-4 !py-2 disabled:opacity-50">
+        <Button variant="secondary" onClick={handleSubmit} disabled={pending}>
           {pending ? "Packing…" : "Mark packed & create label"}
-        </button>
+        </Button>
       )}
     </div>
   );

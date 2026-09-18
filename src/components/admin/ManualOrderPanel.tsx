@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { regeneratePaymentLink, resendPaymentLinkEmail, cancelOrder } from "@/app/admin/(protected)/orders/[id]/actions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 /** The payment-link box on a manual order's page — generate/regenerate the
  * Stripe link, (re)send the client's email, copy the link to paste
@@ -68,57 +71,59 @@ export function ManualOrderPanel({
   }
 
   return (
-    <div className="border hairline p-5 mb-8">
-      <h2 className="label-caps mb-3">Payment link</h2>
-      {link ? (
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            readOnly
-            value={link}
-            onFocus={(e) => e.target.select()}
-            className="border hairline bg-transparent px-3 py-2 text-xs flex-1 min-w-[240px]"
-          />
-          <button type="button" onClick={handleCopy} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {copied ? "Copied" : "Copy link"}
-          </button>
-        </div>
-      ) : (
-        <p className="text-sm text-stone">No payment link yet.</p>
-      )}
-      <p className="text-xs text-stone mt-2">
-        {sentAt
-          ? `Emailed to ${customerEmail} on ${new Date(sentAt).toLocaleString("en-GB")}.`
-          : `Not emailed to ${customerEmail} yet.`}
-      </p>
-      <div className="flex items-center gap-4 mt-4 flex-wrap">
-        <button
-          type="button"
-          onClick={handleRegenerate}
-          disabled={pending}
-          className="text-xs underline text-stone hover:text-ink disabled:opacity-50"
-        >
-          {pending ? "Working…" : link ? "Generate new link" : "Generate link"}
-        </button>
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={pending || !link}
-          className="text-xs underline text-stone hover:text-ink disabled:opacity-50"
-        >
-          {sentAt ? "Resend email" : "Send email"}
-        </button>
-        {canCancel && (
+    <Card className="mb-8 border-line shadow-none">
+      <CardContent className="p-5">
+        <h2 className="label-caps mb-3">Payment link</h2>
+        {link ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              readOnly
+              value={link}
+              onFocus={(e) => e.target.select()}
+              className="min-w-[240px] flex-1 border-line text-xs"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={handleCopy}>
+              {copied ? "Copied" : "Copy link"}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-stone">No payment link yet.</p>
+        )}
+        <p className="mt-2 text-xs text-stone">
+          {sentAt
+            ? `Emailed to ${customerEmail} on ${new Date(sentAt).toLocaleString("en-GB")}.`
+            : `Not emailed to ${customerEmail} yet.`}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
           <button
             type="button"
-            onClick={handleCancel}
+            onClick={handleRegenerate}
             disabled={pending}
-            className="text-xs underline text-accent hover:opacity-70 disabled:opacity-50"
+            className="text-xs text-stone underline hover:text-ink disabled:opacity-50"
           >
-            Cancel this order
+            {pending ? "Working…" : link ? "Generate new link" : "Generate link"}
           </button>
-        )}
-      </div>
-      {error && <p className="text-sm text-accent mt-3">{error}</p>}
-    </div>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={pending || !link}
+            className="text-xs text-stone underline hover:text-ink disabled:opacity-50"
+          >
+            {sentAt ? "Resend email" : "Send email"}
+          </button>
+          {canCancel && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={pending}
+              className="text-xs text-accent underline hover:opacity-70 disabled:opacity-50"
+            >
+              Cancel this order
+            </button>
+          )}
+        </div>
+        {error && <p className="mt-3 text-sm text-accent">{error}</p>}
+      </CardContent>
+    </Card>
   );
 }
