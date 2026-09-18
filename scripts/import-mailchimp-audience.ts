@@ -137,8 +137,8 @@ async function main() {
           data: {
             marketingOptIn: true,
             marketingConsentAt: existing.marketingConsentAt ?? consentAt,
-            firstName: existing.firstName ?? m.merge_fields?.FNAME || undefined,
-            lastName: existing.lastName ?? m.merge_fields?.LNAME || undefined,
+            firstName: existing.firstName ?? (m.merge_fields?.FNAME || undefined),
+            lastName: existing.lastName ?? (m.merge_fields?.LNAME || undefined),
             mailchimpId: existing.mailchimpId ?? m.id,
           },
         });
