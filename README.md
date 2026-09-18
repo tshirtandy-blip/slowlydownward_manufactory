@@ -457,6 +457,40 @@ a thumbnail, name, price, stock level, and published status, in that order.
   manage the options offered in that dropdown. Add new ones (e.g. "Etching")
   any time; nothing needs a code change.
 
+### One-off catalog import (Shopify)
+
+Brings the full product catalog over from an existing Shopify store as a
+one-time backfill — titles, descriptions, images and prices as Shopify has
+them, plus a best-effort parse of edition size / paper size / print size /
+medium out of the description text for stores (like this one) that embed
+those specs in free text rather than Shopify's own structured fields.
+
+This doesn't call the Shopify API directly — it reads a static export,
+`scripts/data/shopify-products/chunk-*.json`, committed alongside the
+script (split into several small files purely for how it was first
+committed; the script reads them together as one catalog). That export is
+pulled once by hand (e.g. via a connected Shopify MCP session) and doesn't
+need refreshing unless you want to re-run the import against updated
+Shopify data.
+
+```bash
+DATABASE_URL="<Supabase DIRECT connection string>" \
+DIRECT_URL="<same>" \
+npm run import:shopify-products
+```
+
+Every imported product is created **unpublished** (`published: false`),
+whatever its Shopify status — review each one in Admin → Product before
+publishing, since the parsed fields are a best-effort guess, not guaranteed
+accurate. It also sets `editionSize` but deliberately creates no numbered
+`Edition` rows (Shopify only ever gave us current remaining stock, never
+which specific numbers were sold) — the numbered copies for a print get
+created automatically the first time you open it in Admin and hit **Save
+product**, per the edition-size behaviour described above. Safe to re-run —
+upserts by slug (Shopify's product handle). See
+`scripts/import-shopify-products.ts` for the exact field mapping and parsing
+rules.
+
 ## How the edition-number system works
 
 - Every physical copy of a print is its own row in the `Edition` table.

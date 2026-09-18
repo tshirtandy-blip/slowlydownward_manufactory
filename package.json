@@ -13,7 +13,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "import:mailchimp-campaigns": "tsx scripts/import-mailchimp-campaigns.ts",
-    "import:mailchimp-audience": "tsx scripts/import-mailchimp-audience.ts"
+    "import:mailchimp-audience": "tsx scripts/import-mailchimp-audience.ts",
+    "import:shopify-products": "tsx scripts/import-shopify-products.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
