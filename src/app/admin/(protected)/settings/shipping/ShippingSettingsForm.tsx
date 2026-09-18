@@ -5,8 +5,13 @@ import { updateShippingZones } from "./actions";
 import { COUNTRIES } from "@/lib/countries";
 import { SHIPPING_ZONE_KEYS, type ShippingZoneKey, type ShippingZoneRow } from "@/lib/shipping";
 import { SaveButton } from "@/components/admin/SaveButton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-const inputClass = "border hairline bg-transparent px-3 py-2 text-sm w-full";
+const selectClass =
+  "border border-input bg-background px-2 py-1 text-sm w-44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export function ShippingSettingsForm({ zones }: { zones: ShippingZoneRow[] }) {
   const byKey = useMemo(() => {
@@ -57,69 +62,81 @@ export function ShippingSettingsForm({ zones }: { zones: ShippingZoneRow[] }) {
 
   return (
     <form action={updateShippingZones} className="space-y-10">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {SHIPPING_ZONE_KEYS.map((key) => (
-          <div key={key} className="border hairline p-4">
-            <label className="label-caps block mb-2">Zone name</label>
-            <input
-              name={`label_${key}`}
-              value={labels[key]}
-              onChange={(e) => setLabels((l) => ({ ...l, [key]: e.target.value }))}
-              className={inputClass + " mb-3"}
-            />
-            <label className="label-caps block mb-2">Price (£)</label>
-            <input
-              name={`price_${key}`}
-              type="number"
-              step="0.01"
-              min={0}
-              value={prices[key]}
-              onChange={(e) => setPrices((p) => ({ ...p, [key]: e.target.value }))}
-              className={inputClass}
-            />
-            <p className="text-xs text-stone mt-2">{counts[key]} countries assigned</p>
-          </div>
+          <Card key={key} className="border-line shadow-none">
+            <CardContent className="p-4">
+              <Label htmlFor={`label_${key}`} className="label-caps mb-2 block">
+                Zone name
+              </Label>
+              <Input
+                id={`label_${key}`}
+                name={`label_${key}`}
+                value={labels[key]}
+                onChange={(e) => setLabels((l) => ({ ...l, [key]: e.target.value }))}
+                className="mb-3 border-line"
+              />
+              <Label htmlFor={`price_${key}`} className="label-caps mb-2 block">
+                Price (£)
+              </Label>
+              <Input
+                id={`price_${key}`}
+                name={`price_${key}`}
+                type="number"
+                step="0.01"
+                min={0}
+                value={prices[key]}
+                onChange={(e) => setPrices((p) => ({ ...p, [key]: e.target.value }))}
+                className="border-line"
+              />
+              <p className="mt-2 text-xs text-stone">{counts[key]} countries assigned</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="label-caps">Countries</label>
-          <input
+        <div className="mb-3 flex items-center justify-between">
+          <Label className="label-caps">Countries</Label>
+          <Input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search countries…"
-            className="border hairline bg-transparent px-3 py-1.5 text-sm w-48 focus:outline-none focus:border-ink"
+            className="w-48 border-line"
           />
         </div>
-        <div className="border hairline max-h-[28rem] overflow-y-auto">
-          {COUNTRIES.map((c) => (
-            <div
-              key={c.code}
-              hidden={!!filterQuery && !c.name.toLowerCase().includes(filterQuery)}
-              className="flex items-center justify-between gap-4 px-3 py-2 border-b hairline last:border-0"
-            >
-              <span className="text-sm">{c.name}</span>
-              <select
-                name={`country_${c.code}`}
-                value={assignments[c.code] ?? ""}
-                onChange={(e) =>
-                  setAssignments((a) => ({ ...a, [c.code]: e.target.value as ShippingZoneKey | "" }))
-                }
-                className="border hairline bg-transparent px-2 py-1 text-sm w-44"
-              >
-                <option value="">Not shipped</option>
-                <option value="UK">{labels.UK}</option>
-                <option value="EUROPE">{labels.EUROPE}</option>
-                <option value="ROW">{labels.ROW}</option>
-              </select>
-            </div>
-          ))}
-          {visibleCount === 0 && (
-            <p className="px-3 py-6 text-sm text-stone text-center">No countries match "{filter}".</p>
-          )}
-        </div>
+        <Card className="border-line shadow-none">
+          <CardContent className="p-0">
+            <ScrollArea className="h-[28rem]">
+              {COUNTRIES.map((c) => (
+                <div
+                  key={c.code}
+                  hidden={!!filterQuery && !c.name.toLowerCase().includes(filterQuery)}
+                  className="flex items-center justify-between gap-4 border-b border-line px-3 py-2 last:border-0"
+                >
+                  <span className="text-sm">{c.name}</span>
+                  <select
+                    name={`country_${c.code}`}
+                    value={assignments[c.code] ?? ""}
+                    onChange={(e) =>
+                      setAssignments((a) => ({ ...a, [c.code]: e.target.value as ShippingZoneKey | "" }))
+                    }
+                    className={selectClass}
+                  >
+                    <option value="">Not shipped</option>
+                    <option value="UK">{labels.UK}</option>
+                    <option value="EUROPE">{labels.EUROPE}</option>
+                    <option value="ROW">{labels.ROW}</option>
+                  </select>
+                </div>
+              ))}
+              {visibleCount === 0 && (
+                <p className="px-3 py-6 text-center text-sm text-stone">No countries match "{filter}".</p>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       <SaveButton>Save shipping settings</SaveButton>
