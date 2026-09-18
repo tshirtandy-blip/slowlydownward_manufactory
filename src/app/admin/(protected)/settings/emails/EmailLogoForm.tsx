@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ImageDropzone } from "@/components/admin/ImageDropzone";
 import { updateEmailLogo } from "./actions";
+import { Card, CardContent } from "@/components/ui/card";
 
 /** The logo shown at the top of every transactional email — applies to all
  * of them at once (payment link, order confirmation, welcome), same as the
@@ -23,24 +24,26 @@ export function EmailLogoForm({ initialLogoUrl }: { initialLogoUrl: string }) {
   }
 
   return (
-    <div className="border hairline p-6 mb-8 max-w-2xl">
-      <h2 className="label-caps mb-2">Email header logo</h2>
-      <p className="text-sm text-stone mb-4">
-        Shown centered at the top of every email below, above your own wording. Leave it empty to send emails
-        with no header image, just the message itself.
-      </p>
-      <ImageDropzone value={logoUrl} onChange={save} />
-      {pending && <p className="text-xs text-stone mt-2">Saving…</p>}
-      {saved && !pending && <p className="text-xs text-stone mt-2">Saved.</p>}
-      {logoUrl && (
-        <button
-          type="button"
-          onClick={() => save("")}
-          className="text-xs underline text-stone hover:text-ink mt-3"
-        >
-          Remove logo
-        </button>
-      )}
-    </div>
+    <Card className="mb-8 max-w-2xl border-line shadow-none">
+      <CardContent className="p-6">
+        <h2 className="label-caps mb-2">Email header logo</h2>
+        <p className="mb-4 text-sm text-stone">
+          Shown centered at the top of every email below, above your own wording. Leave it empty to send emails
+          with no header image, just the message itself.
+        </p>
+        <ImageDropzone value={logoUrl} onChange={save} />
+        {pending && <p className="mt-2 text-xs text-stone">Saving…</p>}
+        {saved && !pending && <p className="mt-2 text-xs text-stone">Saved.</p>}
+        {logoUrl && (
+          <button
+            type="button"
+            onClick={() => save("")}
+            className="mt-3 text-xs text-stone underline hover:text-ink"
+          >
+            Remove logo
+          </button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

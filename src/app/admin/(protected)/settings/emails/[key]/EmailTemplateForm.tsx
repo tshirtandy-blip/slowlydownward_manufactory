@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { updateEmailTemplate, sendTestEmail } from "./actions";
-
-const inputClass = "border hairline bg-transparent px-3 py-2 text-sm w-full";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export function EmailTemplateForm({
   templateKey,
@@ -61,31 +63,35 @@ export function EmailTemplateForm({
   return (
     <div className="space-y-8">
       {variables.length > 0 && (
-        <div className="border hairline p-4 text-xs text-stone">
-          <p className="label-caps mb-2">Available in this email</p>
-          <ul className="space-y-1">
-            {variables.map((v) => (
-              <li key={v.token}>
-                <code className="text-ink">{v.token}</code> — {v.description}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card className="border-line shadow-none">
+          <CardContent className="p-4 text-xs text-stone">
+            <p className="label-caps mb-2">Available in this email</p>
+            <ul className="space-y-1">
+              {variables.map((v) => (
+                <li key={v.token}>
+                  <code className="text-ink">{v.token}</code> — {v.description}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       <div>
-        <label className="label-caps block mb-2">Subject line</label>
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} />
+        <Label htmlFor="emailSubject" className="label-caps mb-2 block">
+          Subject line
+        </Label>
+        <Input id="emailSubject" value={subject} onChange={(e) => setSubject(e.target.value)} className="border-line" />
       </div>
 
       <div>
-        <label className="label-caps block mb-2">Message</label>
+        <Label className="label-caps mb-2 block">Message</Label>
         <RichTextEditor value={introHtml} onChange={setIntroHtml} />
       </div>
 
       {hasClosing && (
         <div>
-          <label className="label-caps block mb-2">Closing note (optional, shown after the order details)</label>
+          <Label className="label-caps mb-2 block">Closing note (optional, shown after the order details)</Label>
           <RichTextEditor value={closingHtml} onChange={setClosingHtml} />
         </div>
       )}
@@ -94,12 +100,12 @@ export function EmailTemplateForm({
       {saved && !error && <p className="text-sm text-stone">Saved.</p>}
 
       <div className="flex items-center gap-4">
-        <button type="button" onClick={save} disabled={pending} className="btn-primary disabled:opacity-50">
+        <Button type="button" onClick={save} disabled={pending}>
           {pending ? "Saving…" : "Save"}
-        </button>
-        <button type="button" onClick={sendTest} disabled={testPending} className="btn-secondary disabled:opacity-50">
+        </Button>
+        <Button type="button" variant="secondary" onClick={sendTest} disabled={testPending}>
           {testPending ? "Sending…" : "Send yourself a test"}
-        </button>
+        </Button>
       </div>
       {testError && <p className="text-sm text-accent">{testError}</p>}
       {testSent && !testError && <p className="text-sm text-stone">Test sent — check your inbox.</p>}
