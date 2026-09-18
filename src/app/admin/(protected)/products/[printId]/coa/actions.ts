@@ -96,6 +96,6 @@ export async function previewProductCoaPdf(
     });
     return { ok: true, pdfBase64: pdf.toString("base64") };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Couldn't generate a preview PDf." };
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't generate a preview PDF." };
   }
 }
