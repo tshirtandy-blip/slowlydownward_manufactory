@@ -35,6 +35,9 @@ export function SiteFooter({ settings, links }: { settings: FooterSettings; link
           <h3 className="label-caps mb-4">{settings.footerColumn2Heading}</h3>
           <p className="text-sm text-stone mb-4 whitespace-pre-line">{settings.footerColumn2Body}</p>
           <NewsletterSignupForm />
+          <Link href="/archive" className="mt-4 inline-block text-xs text-stone hover:text-ink underline">
+            Browse past newsletters
+          </Link>
         </div>
         <div>
           <h3 className="label-caps mb-4">{settings.footerLinksHeading}</h3>
