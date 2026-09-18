@@ -8,6 +8,7 @@ export const SECTION_ACCESS: Record<string, Role[]> = {
   dashboard: ["ADMIN", "SALES"],
   orders: ["ADMIN", "SALES"],
   customers: ["ADMIN", "SALES"],
+  campaigns: ["ADMIN", "SALES"],
   pack: ["ADMIN", "PACKER"],
   products: ["ADMIN", "STOCK"],
   reports: ["ADMIN", "SALES"],

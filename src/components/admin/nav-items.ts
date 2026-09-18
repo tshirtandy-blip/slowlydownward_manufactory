@@ -7,6 +7,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", section: "dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", section: "orders", icon: ShoppingCart },
   { href: "/admin/customers", label: "Clients", section: "customers", icon: Users },
+  { href: "/admin/campaigns", label: "Campaigns", section: "campaigns", icon: Mail },
   { href: "/admin/pack", label: "Packing queue", section: "pack", icon: PackageCheck },
   { href: "/admin/products", label: "Product", section: "products", icon: Package },
   { href: "/admin/reports", label: "Reports", section: "reports", icon: BarChart3 },

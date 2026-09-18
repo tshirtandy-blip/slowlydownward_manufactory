@@ -37,6 +37,8 @@ const DEFAULTS = {
   cookiePopupSignupBody:
     "Leave your email if you'd like to know when a new print goes live, before it's announced anywhere else.",
   withdrawalPeriodDays: 14,
+  resendSegmentAllId: null as string | null,
+  resendSegmentCustomersId: null as string | null,
 };
 
 export async function getSiteSettings() {

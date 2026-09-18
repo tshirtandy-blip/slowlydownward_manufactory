@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { upsertMailchimpMember } from "@/lib/integrations/mailchimp";
+import { upsertResendContact } from "@/lib/integrations/resend-broadcasts";
 
 export type SubscribeResult = { ok: true } | { ok: false; error: string };
 
@@ -38,9 +39,9 @@ export async function subscribeToNewsletter(rawEmail: string): Promise<Subscribe
     return { ok: false, error: "Something went wrong — try again in a moment." };
   }
 
-  // Mailchimp being unconfigured or unreachable shouldn't stop us having
-  // recorded their consent — same "best effort" treatment the Stripe
-  // webhook already gives this same call.
+  // Mailchimp/Resend being unconfigured or unreachable shouldn't stop us
+  // having recorded their consent — same "best effort" treatment the
+  // Stripe webhook already gives these same calls.
   try {
     await upsertMailchimpMember({
       email,
@@ -51,6 +52,20 @@ export async function subscribeToNewsletter(rawEmail: string): Promise<Subscribe
     });
   } catch (err) {
     console.warn("subscribeToNewsletter: Mailchimp sync failed:", err);
+  }
+
+  try {
+    const resendContactId = await upsertResendContact({
+      email,
+      firstName: customer.firstName ?? undefined,
+      lastName: customer.lastName ?? undefined,
+      isCustomer: false,
+    });
+    if (resendContactId) {
+      await prisma.customer.update({ where: { id: customer.id }, data: { resendContactId } });
+    }
+  } catch (err) {
+    console.warn("subscribeToNewsletter: Resend sync failed:", err);
   }
 
   return { ok: true };
