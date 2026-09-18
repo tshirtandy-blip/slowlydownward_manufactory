@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { COUNTRIES } from "@/lib/countries";
 import { formatMinor } from "@/lib/money";
 import { createManualOrderAction } from "@/app/admin/(protected)/orders/new/actions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 type PrintOption = {
   id: string;
@@ -26,6 +32,9 @@ type DraftItem = {
   priceMinor: number;
   currency: string;
 };
+
+const selectClass =
+  "flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 // Same "your usual markets first" ordering as the storefront cart's country
 // picker (src/app/cart/CartPageClient.tsx) — keeps the two dropdowns feeling
@@ -185,21 +194,16 @@ export function ManualOrderForm({ prints, zones }: { prints: PrintOption[]; zone
     <div className="space-y-8">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label-caps block mb-2">Client email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border hairline bg-transparent px-3 py-2 text-sm w-full"
-          />
+          <Label htmlFor="moEmail" className="label-caps mb-2 block">
+            Client email
+          </Label>
+          <Input id="moEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="border-line" />
         </div>
         <div>
-          <label className="label-caps block mb-2">Ship to</label>
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="border hairline bg-transparent px-3 py-2 text-sm w-full"
-          >
+          <Label htmlFor="moCountry" className="label-caps mb-2 block">
+            Ship to
+          </Label>
+          <select id="moCountry" value={country} onChange={(e) => setCountry(e.target.value)} className={selectClass}>
             <option value="">Choose a country…</option>
             {shippableCountries.map((c) => (
               <option key={c.code} value={c.code}>
@@ -211,121 +215,137 @@ export function ManualOrderForm({ prints, zones }: { prints: PrintOption[]; zone
       </div>
 
       <div>
-        <label className="label-caps block mb-2">Internal note (optional)</label>
-        <textarea
+        <Label htmlFor="moNote" className="label-caps mb-2 block">
+          Internal note (optional)
+        </Label>
+        <Textarea
+          id="moNote"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder="e.g. sold via Instagram DM, client wants tracked shipping"
-          className="border hairline bg-transparent px-3 py-2 text-sm w-full"
+          className="border-line"
         />
       </div>
 
-      <div className="border hairline p-5">
-        <h2 className="label-caps mb-4">Add an item</h2>
-        <div className="flex items-end gap-3 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
-            <label className="label-caps block mb-2">Print</label>
-            <select
-              value={selectedPrintId}
-              onChange={(e) => handleSelectPrint(e.target.value)}
-              className="border hairline bg-transparent px-3 py-2 text-sm w-full"
-            >
-              <option value="">Choose a print…</option>
-              {prints.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                  {!p.published ? " (not published)" : ""} — {formatMinor(p.priceMinor, p.currency)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {loadingPrint && <p className="text-sm text-stone pb-2">Loading…</p>}
-
-          {printInfo && !printInfo.isOpenEdition && (
-            <div>
-              <label className="label-caps block mb-2">Edition number</label>
+      <Card className="border-line shadow-none">
+        <CardContent className="p-5">
+          <h2 className="label-caps mb-4">Add an item</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1">
+              <Label htmlFor="moPrint" className="label-caps mb-2 block">
+                Print
+              </Label>
               <select
-                value={pendingNumber}
-                onChange={(e) => setPendingNumber(e.target.value)}
-                className="border hairline bg-transparent px-3 py-2 text-sm w-32"
+                id="moPrint"
+                value={selectedPrintId}
+                onChange={(e) => handleSelectPrint(e.target.value)}
+                className={selectClass}
               >
-                <option value="">
-                  {printInfo.available.length === 0 ? "None available" : "Choose…"}
-                </option>
-                {printInfo.available.map((n) => (
-                  <option key={n} value={n}>
-                    #{n} / {printInfo.editionSize}
+                <option value="">Choose a print…</option>
+                {prints.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                    {!p.published ? " (not published)" : ""} — {formatMinor(p.priceMinor, p.currency)}
                   </option>
                 ))}
               </select>
             </div>
-          )}
 
-          {printInfo && printInfo.isOpenEdition && (
-            <div>
-              <label className="label-caps block mb-2">Quantity</label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={pendingQuantity}
-                onChange={(e) => setPendingQuantity(Number(e.target.value))}
-                className="border hairline bg-transparent px-3 py-2 text-sm w-20"
-              />
-            </div>
-          )}
+            {loadingPrint && <p className="pb-2 text-sm text-stone">Loading…</p>}
 
-          {printInfo && (
-            <button type="button" onClick={handleAddItem} className="btn-secondary">
-              Add to order
-            </button>
-          )}
-        </div>
-        {pickError && <p className="text-sm text-accent mt-3">{pickError}</p>}
-      </div>
+            {printInfo && !printInfo.isOpenEdition && (
+              <div>
+                <Label htmlFor="moEditionNumber" className="label-caps mb-2 block">
+                  Edition number
+                </Label>
+                <select
+                  id="moEditionNumber"
+                  value={pendingNumber}
+                  onChange={(e) => setPendingNumber(e.target.value)}
+                  className={`${selectClass} w-32`}
+                >
+                  <option value="">
+                    {printInfo.available.length === 0 ? "None available" : "Choose…"}
+                  </option>
+                  {printInfo.available.map((n) => (
+                    <option key={n} value={n}>
+                      #{n} / {printInfo.editionSize}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {printInfo && printInfo.isOpenEdition && (
+              <div>
+                <Label htmlFor="moQuantity" className="label-caps mb-2 block">
+                  Quantity
+                </Label>
+                <Input
+                  id="moQuantity"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={pendingQuantity}
+                  onChange={(e) => setPendingQuantity(Number(e.target.value))}
+                  className="w-20 border-line"
+                />
+              </div>
+            )}
+
+            {printInfo && (
+              <Button type="button" variant="secondary" onClick={handleAddItem}>
+                Add to order
+              </Button>
+            )}
+          </div>
+          {pickError && <p className="mt-3 text-sm text-accent">{pickError}</p>}
+        </CardContent>
+      </Card>
 
       {items.length > 0 && (
-        <div className="border hairline">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="label-caps text-left border-b hairline">
-                <th className="p-3">Item</th>
-                <th className="p-3">Price</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((i) => (
-                <tr key={i.key} className="border-b hairline last:border-0">
-                  <td className="p-3">
-                    {i.title}
-                    {i.requestedEditionNumber ? ` — edition #${i.requestedEditionNumber}` : ` — qty ${i.quantity}`}
-                  </td>
-                  <td className="p-3">{formatMinor(i.priceMinor * i.quantity, i.currency)}</td>
-                  <td className="p-3 text-right">
-                    <button type="button" onClick={() => handleRemoveItem(i.key)} className="text-xs underline text-stone hover:text-ink">
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="p-3 border-t hairline text-sm flex flex-col items-end gap-1">
-            <p>Subtotal: {formatMinor(subtotalMinor)}</p>
-            <p>Shipping: {country ? formatMinor(shippingMinor) : "—"}</p>
-            <p className="font-medium">Total: {formatMinor(subtotalMinor + shippingMinor)}</p>
-          </div>
-        </div>
+        <Card className="border-line shadow-none">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-line">
+                  <TableHead className="label-caps">Item</TableHead>
+                  <TableHead className="label-caps">Price</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((i) => (
+                  <TableRow key={i.key} className="border-line">
+                    <TableCell>
+                      {i.title}
+                      {i.requestedEditionNumber ? ` — edition #${i.requestedEditionNumber}` : ` — qty ${i.quantity}`}
+                    </TableCell>
+                    <TableCell>{formatMinor(i.priceMinor * i.quantity, i.currency)}</TableCell>
+                    <TableCell className="text-right">
+                      <button type="button" onClick={() => handleRemoveItem(i.key)} className="text-xs text-stone underline hover:text-ink">
+                        Remove
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex flex-col items-end gap-1 border-t border-line p-3 text-sm">
+              <p>Subtotal: {formatMinor(subtotalMinor)}</p>
+              <p>Shipping: {country ? formatMinor(shippingMinor) : "—"}</p>
+              <p className="font-medium">Total: {formatMinor(subtotalMinor + shippingMinor)}</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {formError && <p className="text-sm text-accent">{formError}</p>}
 
-      <button type="button" onClick={handleSubmit} disabled={pending} className="btn-primary disabled:opacity-50">
+      <Button type="button" onClick={handleSubmit} disabled={pending}>
         {pending ? "Creating…" : "Create order & send payment link"}
-      </button>
+      </Button>
     </div>
   );
 }
