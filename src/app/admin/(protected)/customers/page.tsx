@@ -1,12 +1,30 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatMinor } from "@/lib/money";
 import { OWNED_STATUSES } from "@/lib/customer-collection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomersPage({ searchParams }: { searchParams: { q?: string } }) {
+// Sorting is by most recent activity (last order, or date joined for
+// someone with no orders yet), which isn't a plain DB column — so, as
+// before, this fetches a capped batch and sorts/pages it in memory rather
+// than doing it at the database level.
+const FETCH_CAP = 500;
+const PAGE_SIZE = 25;
+
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: { q?: string; offset?: string };
+}) {
   const q = searchParams.q?.trim();
+  const offset = Math.max(0, Number(searchParams.offset) || 0);
 
   const customers = await prisma.customer.findMany({
     where: q
@@ -22,12 +40,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: { 
     include: {
       orders: { select: { status: true, totalMinor: true, currency: true, createdAt: true } },
     },
-    take: 300,
+    take: FETCH_CAP,
   });
 
-  // Sorted by most recent activity (last order, or date joined for someone
-  // with no orders yet) rather than a plain DB order-by, since that's a
-  // more useful default for a staff member scanning the client list.
   const rows = customers
     .map((customer) => {
       const realizedOrders = customer.orders.filter((o) => OWNED_STATUSES.includes(o.status));
@@ -45,67 +60,130 @@ export default async function CustomersPage({ searchParams }: { searchParams: { 
       return bTime - aTime;
     });
 
+  const totalCustomers = rows.length;
+  const pageRows = rows.slice(offset, offset + PAGE_SIZE);
+  const rangeStart = totalCustomers === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + PAGE_SIZE, totalCustomers);
+  const prevOffset = Math.max(0, offset - PAGE_SIZE);
+  const nextOffset = offset + PAGE_SIZE;
+
+  function pageHref(newOffset: number) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (newOffset > 0) params.set("offset", String(newOffset));
+    const qs = params.toString();
+    return qs ? `/admin/customers?${qs}` : "/admin/customers";
+  }
+
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-8">
+      <div className="flex items-center justify-between mb-8">
         <h1 className="font-display text-2xl">Clients</h1>
-        <p className="text-xs text-stone">{customers.length} total</p>
+        <p className="text-xs text-stone">
+          {totalCustomers}
+          {totalCustomers === FETCH_CAP ? "+" : ""} total
+        </p>
       </div>
 
-      <form className="mb-6">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name, email, or phone"
-          className="border hairline bg-transparent px-3 py-2 text-sm w-full max-w-lg focus:outline-none focus:border-ink"
-        />
+      <form className="relative mb-6 max-w-lg">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone" />
+        <Input type="text" name="q" defaultValue={q} placeholder="Search by name, email, or phone" className="border-line pl-9" />
       </form>
 
-      <div className="border hairline">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="label-caps text-left border-b hairline">
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Phone</th>
-              <th className="p-3">Orders</th>
-              <th className="p-3">Lifetime spend</th>
-              <th className="p-3">Marketing</th>
-              <th className="p-3">Account</th>
-              <th className="p-3">Last order</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ customer, orderCount, lifetimeSpendMinor, currency, lastOrderAt }) => {
-              const name = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
-              return (
-                <tr key={customer.id} className="border-b hairline last:border-0 hover:bg-line/40">
-                  <td className="p-3">
-                    <Link href={`/admin/customers/${customer.id}`} className="underline">
-                      {name || "—"}
-                    </Link>
-                  </td>
-                  <td className="p-3">{customer.email}</td>
-                  <td className="p-3 text-stone">{customer.phone ?? "—"}</td>
-                  <td className="p-3">{orderCount}</td>
-                  <td className="p-3">{lifetimeSpendMinor > 0 ? formatMinor(lifetimeSpendMinor, currency) : "—"}</td>
-                  <td className="p-3 text-stone">{customer.marketingOptIn ? "Opted in" : "—"}</td>
-                  <td className="p-3 text-stone">{customer.passwordHash ? "Registered" : "Guest"}</td>
-                  <td className="p-3 text-stone">{lastOrderAt ? lastOrderAt.toLocaleDateString("en-GB") : "—"}</td>
-                </tr>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-stone">
-                  {q ? "No clients match that search." : "No clients yet."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card className="border-line shadow-none">
+        <CardHeader>
+          <CardTitle className="font-display text-lg font-normal">Clients</CardTitle>
+          <CardDescription>Every registered and guest customer, most recently active first.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Orders</TableHead>
+                <TableHead>Lifetime spend</TableHead>
+                <TableHead>Marketing</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Last order</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageRows.map(({ customer, orderCount, lifetimeSpendMinor, currency, lastOrderAt }) => {
+                const name = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
+                return (
+                  <TableRow key={customer.id}>
+                    <TableCell>
+                      <Link href={`/admin/customers/${customer.id}`} className="hover:underline">
+                        {name || "—"}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{customer.email}</TableCell>
+                    <TableCell className="text-stone">{customer.phone ?? "—"}</TableCell>
+                    <TableCell>{orderCount}</TableCell>
+                    <TableCell>{lifetimeSpendMinor > 0 ? formatMinor(lifetimeSpendMinor, currency) : "—"}</TableCell>
+                    <TableCell>
+                      {customer.marketingOptIn ? (
+                        <Badge variant="outline">Opted in</Badge>
+                      ) : (
+                        <span className="text-stone">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{customer.passwordHash ? "Registered" : "Guest"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-stone">
+                      {lastOrderAt ? lastOrderAt.toLocaleDateString("en-GB") : "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          {pageRows.length === 0 && (
+            <p className="py-12 text-center text-sm text-stone">
+              {q ? "No clients match that search." : "No clients yet."}
+            </p>
+          )}
+        </CardContent>
+        <CardFooter>
+          <div className="flex w-full items-center justify-between">
+            <p className="text-xs text-stone">
+              Showing <strong className="text-ink">{rangeStart}-{rangeEnd}</strong> of{" "}
+              <strong className="text-ink">{totalCustomers}</strong> clients
+            </p>
+            <div className="flex gap-2">
+              {offset === 0 ? (
+                <Button variant="ghost" size="sm" disabled>
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Prev
+                </Button>
+              ) : (
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={pageHref(prevOffset)}>
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Prev
+                  </Link>
+                </Button>
+              )}
+              {nextOffset >= totalCustomers ? (
+                <Button variant="ghost" size="sm" disabled>
+                  Next
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={pageHref(nextOffset)}>
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

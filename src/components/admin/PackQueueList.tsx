@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { PackCarrierPicker } from "./PackCarrierPicker";
 import { packOrder } from "@/app/admin/(protected)/pack/actions";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type CarrierQuote = { amountMinor: number; currency: string; service: string; overWeight?: boolean } | null;
 
@@ -47,53 +49,54 @@ export function PackQueueList({ initialOrders }: { initialOrders: PackQueueRow[]
   return (
     <div className="space-y-6">
       {orders.map((order) => (
-        <div key={order.id} className="border hairline p-5">
-          <div className="flex items-center justify-between mb-4">
+        <Card key={order.id} className="border-line shadow-none">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <div>
               <p className="font-display text-lg">{order.orderNumber}</p>
               <p className="text-sm text-stone">{order.shippingName ?? "Shipping name not yet captured"}</p>
             </div>
-          </div>
+          </CardHeader>
+          <CardContent>
+            <Table className="mb-5">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Print</TableHead>
+                  <TableHead>Edition #</TableHead>
+                  <TableHead>Drawer / location</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {order.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.title}</TableCell>
+                    <TableCell className="font-medium">{item.editionLabel}</TableCell>
+                    <TableCell>{item.drawerLocation ?? "Unfiled — check with Product"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-          <table className="w-full text-sm mb-5">
-            <thead>
-              <tr className="label-caps text-left border-b hairline">
-                <th className="py-2">Print</th>
-                <th className="py-2">Edition #</th>
-                <th className="py-2">Drawer / location</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => (
-                <tr key={item.id} className="border-b hairline last:border-0">
-                  <td className="py-2">{item.title}</td>
-                  <td className="py-2 font-medium">{item.editionLabel}</td>
-                  <td className="py-2">{item.drawerLocation ?? "Unfiled — check with Product"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {order.costs.customsPlaceholder && (
+              <p className="text-xs text-accent mb-3">
+                One or more of these prints is missing weight/customs details (Admin &gt; Products &gt; edit the
+                print) — the UPS quote and customs paperwork for this order are using generic placeholders.
+              </p>
+            )}
 
-          {order.costs.customsPlaceholder && (
-            <p className="text-xs text-accent mb-3">
-              One or more of these prints is missing weight/customs details (Admin &gt; Products &gt; edit the
-              print) — the UPS quote and customs paperwork for this order are using generic placeholders.
-            </p>
-          )}
-
-          <PackCarrierPicker
-            orderId={order.id}
-            packAction={packOrder}
-            royalMail={order.costs.royalMail}
-            royalMailError={order.costs.royalMailError}
-            ups={order.costs.ups}
-            upsError={order.costs.upsError}
-            currency={order.currency}
-            requiresCustoms={order.costs.requiresCustoms}
-            defaultDims={order.costs.defaultDims}
-            defaultCustomsValueMinor={order.costs.defaultCustomsValueMinor}
-          />
-        </div>
+            <PackCarrierPicker
+              orderId={order.id}
+              packAction={packOrder}
+              royalMail={order.costs.royalMail}
+              royalMailError={order.costs.royalMailError}
+              ups={order.costs.ups}
+              upsError={order.costs.upsError}
+              currency={order.currency}
+              requiresCustoms={order.costs.requiresCustoms}
+              defaultDims={order.costs.defaultDims}
+              defaultCustomsValueMinor={order.costs.defaultCustomsValueMinor}
+            />
+          </CardContent>
+        </Card>
       ))}
 
       {orders.length === 0 && <p className="text-stone text-center py-16">Nothing to pack right now.</p>}
