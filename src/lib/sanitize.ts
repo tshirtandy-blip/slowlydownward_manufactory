@@ -1,5 +1,6 @@
 import sanitizeHtml from "sanitize-html";
 import type { Block } from "@/lib/blocks";
+import type { CampaignBlock } from "@/lib/campaignBlocks";
 
 /**
  * Sanitizes rich text coming out of the admin's block editor (RichTextEditor)
@@ -31,4 +32,14 @@ export function sanitizeBlocks(blocks: Block[]): Block[] {
       ? { ...block, body: sanitizeRichText(block.body) }
       : block
   );
+}
+
+/** Same idea as sanitizeBlocks, for the campaign email builder
+ * (src/lib/campaignBlocks.ts) — only its "text" block carries rich-text
+ * HTML from RichTextEditor; every other block's fields are plain strings
+ * (escaped separately at render time in src/lib/campaignRender.ts). Called
+ * from saveCampaignDraft, the one place a campaign's blocks are ever
+ * written. */
+export function sanitizeCampaignBlocks(blocks: CampaignBlock[]): CampaignBlock[] {
+  return blocks.map((block) => (block.type === "text" ? { ...block, body: sanitizeRichText(block.body) } : block));
 }
