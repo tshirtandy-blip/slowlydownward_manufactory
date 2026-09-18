@@ -651,6 +651,16 @@ model Campaign {
   // line — see the "duplicate campaigns" cleanup this was added for.
   campaignName String?
   html     String
+  // Ordered array of content blocks from the campaign email builder (see
+  // src/lib/campaignBlocks.ts for the shapes this holds) — the source an
+  // admin actually edits. `html` above is always kept as the rendered
+  // output of these blocks (src/lib/campaignRender.ts), regenerated on
+  // every save, so every send/preview/test path can keep reading `html`
+  // unchanged. Empty ("[]") for a campaign never touched by this builder —
+  // e.g. one imported from Mailchimp, or a draft saved before this field
+  // existed — see blocksFromLegacyHtml() for how the compose page handles
+  // that case.
+  blocks   Json             @default("[]")
   audience CampaignAudience @default(ALL)
   status   CampaignStatus   @default(DRAFT)
 
