@@ -39,16 +39,16 @@ export function CollectionCarousel({ pieces }: { pieces: CollectionPiece[] }) {
             data-card
             className="group shrink-0 w-64 snap-start"
           >
-            <div className="border hairline aspect-[3/4] overflow-hidden bg-line/10 mb-3">
+            <div className="border hairline overflow-hidden bg-line/10 mb-3">
               {piece.printImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={piece.printImageUrl}
                   alt={piece.printTitle}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-auto group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-stone text-xs">No image</div>
+                <div className="w-full aspect-[3/4] flex items-center justify-center text-stone text-xs">No image</div>
               )}
             </div>
             <p className="font-display text-lg leading-tight group-hover:text-accent transition-colors">
