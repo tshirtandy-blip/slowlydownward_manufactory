@@ -5,6 +5,9 @@ import { editionSummary } from "@/lib/editions";
 import { releaseExpiredReservations } from "@/lib/edition-reservations";
 import { EditionRow } from "@/components/admin/EditionRow";
 import { DrawerLocationEditor } from "@/components/admin/DrawerLocationEditor";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +47,9 @@ export default async function StockDetailsPage({
           <h1 className="font-display text-2xl mb-1">Stock — {print.title}</h1>
           <p className="text-stone text-sm">{editionSummary(available, print.editionSize)}</p>
         </div>
-        <Link href={`/admin/products/${print.id}/labels`} className="btn-secondary !px-4 !py-2 shrink-0">
-          Print label sheet
-        </Link>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link href={`/admin/products/${print.id}/labels`}>Print label sheet</Link>
+        </Button>
       </div>
 
       <div className="mb-8">
@@ -83,33 +86,33 @@ export default async function StockDetailsPage({
             ))}
           </div>
 
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="label-caps text-left border-b hairline">
-                <th className="py-2">Number</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Customer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {print.editions.map((edition) => (
-                <EditionRow
-                  key={edition.id}
-                  id={edition.id}
-                  number={edition.number}
-                  status={edition.status}
-                  soldTo={edition.orderItem?.order.shippingName ?? edition.orderItem?.order.customer.email}
-                />
-              ))}
+          <Card className="border-line shadow-none">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Number</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Customer</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {print.editions.map((edition) => (
+                    <EditionRow
+                      key={edition.id}
+                      id={edition.id}
+                      number={edition.number}
+                      status={edition.status}
+                      soldTo={edition.orderItem?.order.shippingName ?? edition.orderItem?.order.customer.email}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
               {print.editions.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-stone">
-                    No editions match this filter.
-                  </td>
-                </tr>
+                <p className="py-8 text-center text-sm text-stone">No editions match this filter.</p>
               )}
-            </tbody>
-          </table>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

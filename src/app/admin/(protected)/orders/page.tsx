@@ -6,24 +6,13 @@ import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
-
-// Same status -> colour meaning as before, just applied to a Badge instead
-// of plain text.
-const STATUS_BADGE_CLASS: Record<string, string> = {
-  PENDING_PAYMENT: "text-stone border-line",
-  PAID: "text-accent border-accent",
-  PACKING: "text-accent border-accent",
-  PACKED: "text-ink border-ink",
-  SHIPPED: "text-ink border-ink",
-  CANCELLED: "text-stone border-line line-through",
-  REFUNDED: "text-stone border-line line-through",
-};
 
 export default async function OrdersPage({
   searchParams,
@@ -121,9 +110,7 @@ export default async function OrdersPage({
                   <TableCell>{order.items.length}</TableCell>
                   <TableCell>{formatMinor(order.totalMinor, order.currency)}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={STATUS_BADGE_CLASS[order.status]}>
-                      {order.status.replace("_", " ")}
-                    </Badge>
+                    <OrderStatusBadge status={order.status} />
                   </TableCell>
                   <TableCell className="text-stone">
                     {order.courierStatus ?? (order.shippingCarrier !== "UNASSIGNED" ? order.shippingCarrier : "—")}

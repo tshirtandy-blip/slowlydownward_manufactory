@@ -4,18 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { formatMinor } from "@/lib/money";
 import { COUNTRIES } from "@/lib/countries";
 import { getCustomerCollection, OWNED_STATUSES } from "@/lib/customer-collection";
+import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING_PAYMENT: "text-stone",
-  PAID: "text-accent",
-  PACKING: "text-accent",
-  PACKED: "text-ink",
-  SHIPPED: "text-ink",
-  CANCELLED: "text-stone line-through",
-  REFUNDED: "text-stone line-through",
-};
 
 function countryName(code: string | null | undefined) {
   if (!code) return null;
@@ -90,26 +83,28 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       {customer.addresses.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
           {customer.addresses.map((address) => (
-            <div key={address.id} className="border hairline p-4 text-sm">
-              <p className="label-caps mb-1">
-                {address.label || "Address"}
-                {address.isDefault && <span className="text-stone"> · Default</span>}
-              </p>
-              <p>{address.fullName}</p>
-              <p className="text-stone">
-                {[
-                  address.line1,
-                  address.line2,
-                  address.city,
-                  address.region,
-                  address.postalCode,
-                  countryName(address.countryCode),
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-              {address.phone && <p className="text-stone">{address.phone}</p>}
-            </div>
+            <Card key={address.id} className="border-line text-sm shadow-none">
+              <CardContent className="p-4">
+                <p className="label-caps mb-1">
+                  {address.label || "Address"}
+                  {address.isDefault && <span className="text-stone"> · Default</span>}
+                </p>
+                <p>{address.fullName}</p>
+                <p className="text-stone">
+                  {[
+                    address.line1,
+                    address.line2,
+                    address.city,
+                    address.region,
+                    address.postalCode,
+                    countryName(address.countryCode),
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+                {address.phone && <p className="text-stone">{address.phone}</p>}
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : (
@@ -118,76 +113,76 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
 
       <h2 className="label-caps mb-3">Collection ({collection.length})</h2>
       {collection.length > 0 ? (
-        <div className="border hairline mb-10">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="label-caps text-left border-b hairline">
-                <th className="p-3">Print</th>
-                <th className="p-3">Edition</th>
-                <th className="p-3">Order</th>
-                <th className="p-3">Purchased</th>
-              </tr>
-            </thead>
-            <tbody>
-              {collection.map((piece) => (
-                <tr key={piece.orderItemId} className="border-b hairline last:border-0">
-                  <td className="p-3">
-                    <Link href={`/admin/products/${piece.printId}`} className="underline">
-                      {piece.printTitle}
-                    </Link>
-                  </td>
-                  <td className="p-3 text-stone">
-                    {piece.editionNumber != null
-                      ? `#${piece.editionNumber}${piece.editionSize ? ` / ${piece.editionSize}` : ""}`
-                      : "Open edition"}
-                  </td>
-                  <td className="p-3 text-stone">{piece.orderNumber}</td>
-                  <td className="p-3 text-stone">{piece.purchasedAt.toLocaleDateString("en-GB")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card className="mb-10 border-line shadow-none">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Print</TableHead>
+                  <TableHead>Edition</TableHead>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Purchased</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {collection.map((piece) => (
+                  <TableRow key={piece.orderItemId}>
+                    <TableCell>
+                      <Link href={`/admin/products/${piece.printId}`} className="hover:underline">
+                        {piece.printTitle}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-stone">
+                      {piece.editionNumber != null
+                        ? `#${piece.editionNumber}${piece.editionSize ? ` / ${piece.editionSize}` : ""}`
+                        : "Open edition"}
+                    </TableCell>
+                    <TableCell className="text-stone">{piece.orderNumber}</TableCell>
+                    <TableCell className="text-stone">{piece.purchasedAt.toLocaleDateString("en-GB")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : (
         <p className="text-sm text-stone mb-10">No paid orders yet.</p>
       )}
 
       <h2 className="label-caps mb-3">Order history</h2>
-      <div className="border hairline">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="label-caps text-left border-b hairline">
-              <th className="p-3">Order</th>
-              <th className="p-3">Items</th>
-              <th className="p-3">Total</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Placed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customer.orders.map((order) => (
-              <tr key={order.id} className="border-b hairline last:border-0 hover:bg-line/40">
-                <td className="p-3">
-                  <Link href={`/admin/orders/${order.id}`} className="underline">
-                    {order.orderNumber}
-                  </Link>
-                </td>
-                <td className="p-3">{order.items.length}</td>
-                <td className="p-3">{formatMinor(order.totalMinor, order.currency)}</td>
-                <td className={`p-3 ${STATUS_STYLES[order.status]}`}>{order.status.replace("_", " ")}</td>
-                <td className="p-3 text-stone">{order.createdAt.toLocaleDateString("en-GB")}</td>
-              </tr>
-            ))}
-            {customer.orders.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-stone">
-                  No orders yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card className="border-line shadow-none">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Placed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customer.orders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <Link href={`/admin/orders/${order.id}`} className="hover:underline">
+                      {order.orderNumber}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{order.items.length}</TableCell>
+                  <TableCell>{formatMinor(order.totalMinor, order.currency)}</TableCell>
+                  <TableCell>
+                    <OrderStatusBadge status={order.status} />
+                  </TableCell>
+                  <TableCell className="text-stone">{order.createdAt.toLocaleDateString("en-GB")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {customer.orders.length === 0 && <p className="py-8 text-center text-sm text-stone">No orders yet.</p>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

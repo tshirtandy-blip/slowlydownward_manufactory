@@ -5,6 +5,7 @@ import { formatMinor } from "@/lib/money";
 import { editionSummary } from "@/lib/editions";
 import { togglePublished } from "../actions";
 import { ProductEditForm } from "@/components/admin/ProductEditForm";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,13 @@ export default async function ProductEditPage({ params }: { params: { printId: s
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <Link href={`/admin/products/${print.id}/stock`} className="btn-secondary !px-4 !py-2">
-            Stock
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={`/admin/products/${print.id}/stock`}>Stock</Link>
+          </Button>
           <form action={togglePublished.bind(null, print.id, !print.published)}>
-            <button className="btn-secondary !px-4 !py-2">{print.published ? "Unpublish" : "Publish"}</button>
+            <Button variant="outline" type="submit">
+              {print.published ? "Unpublish" : "Publish"}
+            </Button>
           </form>
         </div>
       </div>
