@@ -8,7 +8,7 @@ export default function NewCampaignPage() {
         ← Campaigns
       </Link>
       <h1 className="font-display text-2xl mt-2 mb-8">New campaign</h1>
-      <CampaignForm campaignId={null} initialSubject="" initialHtml="" initialAudience="ALL" />
+      <CampaignForm campaignId={null} initialSubject="" initialBlocks={[]} initialAudience="ALL" />
     </div>
   );
 }

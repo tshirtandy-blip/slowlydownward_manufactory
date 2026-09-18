@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { canAccess } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
-import { sanitizeRichText } from "@/lib/sanitize";
+import { sanitizeCampaignBlocks } from "@/lib/sanitize";
+import { campaignBlocksArraySchema } from "@/lib/campaignBlocks";
+import { renderCampaignBlocksToHtml } from "@/lib/campaignRender";
 import { sendEmail, emailConfigured } from "@/lib/integrations/resend";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
@@ -16,7 +18,7 @@ import {
   estimateRecipientCount,
   resendBroadcastsConfigured,
 } from "@/lib/integrations/resend-broadcasts";
-import type { CampaignAudience } from "@prisma/client";
+import type { CampaignAudience, Prisma } from "@prisma/client";
 
 async function requireCampaignsAccess() {
   const session = await getServerSession(authOptions);
@@ -52,29 +54,52 @@ export type SaveResult = { ok: true; id: string } | { ok: false; error: string }
 
 /** Creates a new draft (id null) or saves changes to an existing one — only
  * ever a DRAFT; a campaign that's been sent or scheduled is fixed (see
- * cancelScheduledCampaign to pull a scheduled one back to draft first). */
+ * cancelScheduledCampaign to pull a scheduled one back to draft first).
+ *
+ * `input.blocks` is the campaign email builder's block list (see
+ * src/lib/campaignBlocks.ts) — validated, sanitized, then rendered
+ * server-side to actual email-safe HTML (src/lib/campaignRender.ts) and
+ * stored in `html` alongside the blocks themselves. `html` stays the one
+ * thing every send/preview/test path reads, so none of them had to change;
+ * only this function (the one place a campaign is ever written) knows the
+ * blocks exist. */
 export async function saveCampaignDraft(
   id: string | null,
-  input: { subject: string; html: string; audience: string }
+  input: { subject: string; blocks: unknown; audience: string }
 ): Promise<SaveResult> {
   const session = await requireCampaignsAccess();
 
   const subject = input.subject.trim();
   if (!subject) return { ok: false, error: "Give it a subject line first." };
-  const html = sanitizeRichText(input.html);
+
+  const parsedBlocks = campaignBlocksArraySchema.safeParse(input.blocks);
+  if (!parsedBlocks.success) {
+    return { ok: false, error: "Something went wrong saving the campaign content — please try again." };
+  }
+  const blocks = sanitizeCampaignBlocks(parsedBlocks.data);
+  const socialLinks = await prisma.socialLink.findMany({ orderBy: { sortOrder: "asc" } });
+  const html = renderCampaignBlocksToHtml(blocks, {
+    socialLinks: socialLinks.map((s) => ({ id: s.id, platform: s.platform, url: s.url })),
+  });
+
   const audience: CampaignAudience = isAudience(input.audience) ? input.audience : "ALL";
+  // Cast: `blocks` is already zod-validated/sanitized above, but its type
+  // (with optional fields) doesn't structurally match Prisma's generated
+  // JSON input type, which TS can't otherwise reconcile — same cast
+  // savePageBlocks uses for Page.blocks.
+  const blocksJson = blocks as unknown as Prisma.InputJsonValue;
 
   if (id) {
     const existing = await prisma.campaign.findUnique({ where: { id } });
     if (!existing) return { ok: false, error: "That campaign no longer exists." };
     if (existing.status !== "DRAFT") return { ok: false, error: "Only a draft can be edited." };
-    await prisma.campaign.update({ where: { id }, data: { subject, html, audience } });
+    await prisma.campaign.update({ where: { id }, data: { subject, html, blocks: blocksJson, audience } });
     revalidatePath(`/admin/campaigns/${id}`);
     return { ok: true, id };
   }
 
   const created = await prisma.campaign.create({
-    data: { subject, html, audience, createdByUserId: (session.user as any).id ?? null },
+    data: { subject, html, blocks: blocksJson, audience, createdByUserId: (session.user as any).id ?? null },
   });
   revalidatePath("/admin/campaigns");
   return { ok: true, id: created.id };

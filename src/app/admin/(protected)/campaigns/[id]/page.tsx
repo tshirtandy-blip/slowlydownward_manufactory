@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CampaignForm } from "@/components/admin/campaigns/CampaignForm";
+import { parseCampaignBlocks, blocksFromLegacyHtml } from "@/lib/campaignBlocks";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
 import { cancelScheduledCampaignAction, deleteCampaign } from "../actions";
 
@@ -20,6 +21,12 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   if (!campaign) notFound();
 
   if (campaign.status === "DRAFT") {
+    // A draft saved before the block builder existed (or by the old
+    // single rich-text field) has real content in campaign.html but an
+    // empty campaign.blocks — fall back to wrapping that html as a single
+    // legacy text block rather than showing an empty builder and losing it.
+    const parsedBlocks = parseCampaignBlocks(campaign.blocks);
+    const initialBlocks = parsedBlocks.length > 0 ? parsedBlocks : blocksFromLegacyHtml(campaign.html);
     return (
       <div>
         <Link href="/admin/campaigns" className="label-caps text-stone hover:text-ink">
@@ -29,7 +36,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
         <CampaignForm
           campaignId={campaign.id}
           initialSubject={campaign.subject}
-          initialHtml={campaign.html}
+          initialBlocks={initialBlocks}
           initialAudience={campaign.audience}
         />
       </div>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { CampaignBuilder } from "@/components/admin/campaigns/CampaignBuilder";
 import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
+import type { CampaignBlock } from "@/lib/campaignBlocks";
 import {
   previewRecipientCount,
   saveCampaignDraft,
@@ -20,18 +21,18 @@ import { Button } from "@/components/ui/button";
 export function CampaignForm({
   campaignId,
   initialSubject,
-  initialHtml,
+  initialBlocks,
   initialAudience,
 }: {
   campaignId: string | null;
   initialSubject: string;
-  initialHtml: string;
+  initialBlocks: CampaignBlock[];
   initialAudience: "ALL" | "CUSTOMERS";
 }) {
   const router = useRouter();
   const [id, setId] = useState(campaignId);
   const [subject, setSubject] = useState(initialSubject);
-  const [html, setHtml] = useState(initialHtml);
+  const [blocks, setBlocks] = useState<CampaignBlock[]>(initialBlocks);
   const [audience, setAudience] = useState<"ALL" | "CUSTOMERS">(initialAudience);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
 
@@ -63,7 +64,7 @@ export function CampaignForm({
     setSaveError(null);
     setSaved(false);
     startSave(async () => {
-      const result = await saveCampaignDraft(id, { subject, html, audience });
+      const result = await saveCampaignDraft(id, { subject, blocks, audience });
       if (!result.ok) {
         setSaveError(result.error);
         return;
@@ -83,7 +84,7 @@ export function CampaignForm({
     }
     setSendError(null);
     startSend(async () => {
-      const saveResult = await saveCampaignDraft(id, { subject, html, audience });
+      const saveResult = await saveCampaignDraft(id, { subject, blocks, audience });
       if (!saveResult.ok) {
         setSendError(saveResult.error);
         return;
@@ -109,7 +110,7 @@ export function CampaignForm({
     }
     setSendError(null);
     startSend(async () => {
-      const saveResult = await saveCampaignDraft(id, { subject, html, audience });
+      const saveResult = await saveCampaignDraft(id, { subject, blocks, audience });
       if (!saveResult.ok) {
         setSendError(saveResult.error);
         return;
@@ -136,7 +137,7 @@ export function CampaignForm({
     setTestError(null);
     setTestSent(false);
     startTest(async () => {
-      const saveResult = await saveCampaignDraft(id, { subject, html, audience });
+      const saveResult = await saveCampaignDraft(id, { subject, blocks, audience });
       if (!saveResult.ok) {
         setTestError(saveResult.error);
         return;
@@ -151,8 +152,8 @@ export function CampaignForm({
   }
 
   return (
-    <div className="max-w-xl space-y-8">
-      <div>
+    <div className="max-w-2xl space-y-8">
+      <div className="max-w-xl">
         <Label htmlFor="campaignSubject" className="label-caps mb-2 block">
           Subject line
         </Label>
@@ -166,14 +167,11 @@ export function CampaignForm({
       </div>
 
       <div>
-        <Label className="label-caps mb-2 block">Message</Label>
-        <RichTextEditor value={html} onChange={setHtml} />
-        <p className="mt-1 text-xs text-stone">
-          An unsubscribe link is added automatically — no need to write your own.
-        </p>
+        <Label className="label-caps mb-2 block">Content</Label>
+        <CampaignBuilder blocks={blocks} onChange={setBlocks} />
       </div>
 
-      <Card className="border-line shadow-none">
+      <Card className="border-line shadow-none max-w-xl">
         <CardContent className="p-6 space-y-3">
           <Label htmlFor="campaignAudience" className="label-caps block">
             Which database to send from
@@ -215,7 +213,7 @@ export function CampaignForm({
         )}
       </div>
 
-      <Card className="border-line shadow-none">
+      <Card className="border-line shadow-none max-w-xl">
         <CardContent className="p-6 space-y-3">
           <Label htmlFor="scheduledFor" className="label-caps block">
             Or schedule for later
@@ -236,7 +234,7 @@ export function CampaignForm({
       </Card>
       {sendError && <p className="text-sm text-accent">{sendError}</p>}
 
-      <Card className="border-line shadow-none">
+      <Card className="border-line shadow-none max-w-xl">
         <CardContent className="p-6 space-y-3">
           <Label htmlFor="testEmail" className="label-caps block">
             Send yourself a test first
