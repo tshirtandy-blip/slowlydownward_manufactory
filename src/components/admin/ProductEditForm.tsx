@@ -5,8 +5,13 @@ import { updatePrintDetails } from "@/app/admin/(protected)/products/actions";
 import { ImageDropzone } from "@/components/admin/ImageDropzone";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { SaveButton } from "@/components/admin/SaveButton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
-const inputClass = "border hairline bg-transparent px-3 py-2 text-sm w-full";
+const selectClass =
+  "flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export type ProductEditInitial = {
   id: string;
@@ -54,84 +59,94 @@ export function ProductEditForm({
   const updateWithId = updatePrintDetails.bind(null, initial.id);
 
   return (
-    <form action={updateWithId} className="space-y-8 max-w-2xl">
+    <form action={updateWithId} className="max-w-2xl space-y-8">
       <div>
-        <label className="label-caps block mb-2">Primary image</label>
+        <Label className="label-caps mb-2 block">Primary image</Label>
         <ImageDropzone value={primaryImageUrl} onChange={setPrimaryImageUrl} />
         <input type="hidden" name="primaryImageUrl" value={primaryImageUrl} />
       </div>
 
       <div>
-        <label className="label-caps block mb-2">Additional images</label>
+        <Label className="label-caps mb-2 block">Additional images</Label>
         <div className="space-y-3">
           {imageUrls.map((url, i) => (
-            <div key={i} className="border hairline p-3">
-              <ImageDropzone value={url} onChange={(v) => setImageUrls(imageUrls.map((u, j) => (j === i ? v : u)))} />
-              <button
-                type="button"
-                onClick={() => setImageUrls(imageUrls.filter((_, j) => j !== i))}
-                className="text-xs text-stone hover:text-accent mt-2 underline"
-              >
-                Remove
-              </button>
-            </div>
+            <Card key={i} className="border-line shadow-none">
+              <CardContent className="p-3">
+                <ImageDropzone value={url} onChange={(v) => setImageUrls(imageUrls.map((u, j) => (j === i ? v : u)))} />
+                <button
+                  type="button"
+                  onClick={() => setImageUrls(imageUrls.filter((_, j) => j !== i))}
+                  className="mt-2 text-xs text-stone underline hover:text-accent"
+                >
+                  Remove
+                </button>
+              </CardContent>
+            </Card>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setImageUrls([...imageUrls, ""])}
-          className="btn-secondary !px-4 !py-2 mt-3"
-        >
+        <Button type="button" variant="secondary" className="mt-3" onClick={() => setImageUrls([...imageUrls, ""])}>
           + Add image
-        </button>
+        </Button>
         <input type="hidden" name="imageUrls" value={JSON.stringify(imageUrls.filter((u) => u.trim()))} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label-caps block mb-2">Title</label>
-          <input name="title" defaultValue={initial.title} required className={inputClass} />
+          <Label htmlFor="peTitle" className="label-caps mb-2 block">
+            Title
+          </Label>
+          <Input id="peTitle" name="title" defaultValue={initial.title} required className="border-line" />
         </div>
         <div>
-          <label className="label-caps block mb-2">Artist</label>
-          <input name="artist" defaultValue={initial.artist} className={inputClass} />
+          <Label htmlFor="peArtist" className="label-caps mb-2 block">
+            Artist
+          </Label>
+          <Input id="peArtist" name="artist" defaultValue={initial.artist} className="border-line" />
         </div>
       </div>
 
       <div>
-        <label className="label-caps block mb-2">Description</label>
+        <Label className="label-caps mb-2 block">Description</Label>
         <RichTextEditor value={description} onChange={setDescription} />
         <input type="hidden" name="description" value={description} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label-caps block mb-2">Price (£)</label>
-          <input
+          <Label htmlFor="pePrice" className="label-caps mb-2 block">
+            Price (£)
+          </Label>
+          <Input
+            id="pePrice"
             name="price"
             type="number"
             step="0.01"
             min={0}
             required
             defaultValue={(initial.priceMinor / 100).toFixed(2)}
-            className={inputClass}
+            className="border-line"
           />
         </div>
         <div>
-          <label className="label-caps block mb-2">Year</label>
-          <input name="year" type="number" defaultValue={initial.year ?? ""} className={inputClass} />
+          <Label htmlFor="peYear" className="label-caps mb-2 block">
+            Year
+          </Label>
+          <Input id="peYear" name="year" type="number" defaultValue={initial.year ?? ""} className="border-line" />
         </div>
       </div>
 
       <div>
-        <label className="label-caps block mb-2">Edition size</label>
-        <input
+        <Label htmlFor="peEditionSize" className="label-caps mb-2 block">
+          Edition size
+        </Label>
+        <Input
+          id="peEditionSize"
           name="editionSize"
           defaultValue={initial.editionSize ?? "open"}
           placeholder="e.g. 200, or open"
-          className={inputClass + " max-w-[200px]"}
+          className="max-w-[200px] border-line"
         />
-        <p className="text-xs text-stone mt-1">
+        <p className="mt-1 text-xs text-stone">
           A number creates or trims numbered copies to match, 1..N. Type <strong>open</strong> instead for an
           edition that isn't limited or numbered (e.g. a mug or book) — no numbers or remaining-count are ever
           shown for it. Shrinking a number never removes a copy that's already sold, reserved, withheld, or
@@ -141,29 +156,37 @@ export function ProductEditForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label-caps block mb-2">Paper size</label>
-          <input
+          <Label htmlFor="pePaperSize" className="label-caps mb-2 block">
+            Paper size
+          </Label>
+          <Input
+            id="pePaperSize"
             name="paperSize"
             defaultValue={initial.paperSize ?? ""}
             placeholder="e.g. A2 (420 x 594mm)"
-            className={inputClass}
+            className="border-line"
           />
         </div>
         <div>
-          <label className="label-caps block mb-2">Print size</label>
-          <input
+          <Label htmlFor="peImageSize" className="label-caps mb-2 block">
+            Print size
+          </Label>
+          <Input
+            id="peImageSize"
             name="imageSize"
             defaultValue={initial.imageSize ?? ""}
             placeholder="e.g. 300 x 400mm"
-            className={inputClass}
+            className="border-line"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label-caps block mb-2">Medium</label>
-          <select name="medium" defaultValue={initial.medium ?? ""} className={inputClass}>
+          <Label htmlFor="peMedium" className="label-caps mb-2 block">
+            Medium
+          </Label>
+          <select id="peMedium" name="medium" defaultValue={initial.medium ?? ""} className={selectClass}>
             <option value="">— None selected —</option>
             {options.map((m) => (
               <option key={m} value={m}>
@@ -171,107 +194,131 @@ export function ProductEditForm({
               </option>
             ))}
           </select>
-          <a href="/admin/settings/mediums" className="text-xs text-stone hover:text-ink underline mt-1 inline-block">
+          <a href="/admin/settings/mediums" className="mt-1 inline-block text-xs text-stone underline hover:text-ink">
             Add another medium option
           </a>
         </div>
         <div>
-          <label className="label-caps block mb-2">Technique</label>
-          <input
+          <Label htmlFor="peTechnique" className="label-caps mb-2 block">
+            Technique
+          </Label>
+          <Input
+            id="peTechnique"
             name="technique"
             defaultValue={initial.technique ?? ""}
             placeholder="e.g. Screenprint, 6 colours"
-            className={inputClass}
+            className="border-line"
           />
         </div>
       </div>
 
-      <div className="border-t hairline pt-6">
-        <h2 className="label-caps mb-1">Shipping & customs</h2>
-        <p className="text-xs text-stone mb-4">
+      <div className="border-t border-line pt-6">
+        <h2 className="label-caps mb-1">Shipping &amp; customs</h2>
+        <p className="mb-4 text-xs text-stone">
           For ONE packaged copy of this print. Weight and size feed the live UPS cost shown on the Packing tab.
           The customs fields are used to build the commercial invoice needed for shipments outside the UK
           (Europe and rest-of-world) — until these are filled in, that paperwork will use generic placeholders.
         </p>
 
-        <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="mb-4 grid grid-cols-4 gap-4">
           <div>
-            <label className="label-caps block mb-2">Weight (g)</label>
-            <input
+            <Label htmlFor="peWeight" className="label-caps mb-2 block">
+              Weight (g)
+            </Label>
+            <Input
+              id="peWeight"
               name="weightGrams"
               type="number"
               min={0}
               defaultValue={initial.weightGrams ?? ""}
               placeholder="e.g. 450"
-              className={inputClass}
+              className="border-line"
             />
           </div>
           <div>
-            <label className="label-caps block mb-2">Length (cm)</label>
-            <input
+            <Label htmlFor="peLength" className="label-caps mb-2 block">
+              Length (cm)
+            </Label>
+            <Input
+              id="peLength"
               name="lengthCm"
               type="number"
               step="0.1"
               min={0}
               defaultValue={initial.lengthCm ?? ""}
-              className={inputClass}
+              className="border-line"
             />
           </div>
           <div>
-            <label className="label-caps block mb-2">Width (cm)</label>
-            <input
+            <Label htmlFor="peWidth" className="label-caps mb-2 block">
+              Width (cm)
+            </Label>
+            <Input
+              id="peWidth"
               name="widthCm"
               type="number"
               step="0.1"
               min={0}
               defaultValue={initial.widthCm ?? ""}
-              className={inputClass}
+              className="border-line"
             />
           </div>
           <div>
-            <label className="label-caps block mb-2">Height (cm)</label>
-            <input
+            <Label htmlFor="peHeight" className="label-caps mb-2 block">
+              Height (cm)
+            </Label>
+            <Input
+              id="peHeight"
               name="heightCm"
               type="number"
               step="0.1"
               min={0}
               defaultValue={initial.heightCm ?? ""}
-              className={inputClass}
+              className="border-line"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
-            <label className="label-caps block mb-2">Customs value (£ per unit)</label>
-            <input
+            <Label htmlFor="peCustomsValue" className="label-caps mb-2 block">
+              Customs value (£ per unit)
+            </Label>
+            <Input
+              id="peCustomsValue"
               name="customsValue"
               type="number"
               step="0.01"
               min={0}
               defaultValue={initial.customsValueMinor != null ? (initial.customsValueMinor / 100).toFixed(2) : ""}
               placeholder={`Defaults to the price, ${(initial.priceMinor / 100).toFixed(2)}`}
-              className={inputClass}
+              className="border-line"
             />
           </div>
           <div>
-            <label className="label-caps block mb-2">Customs (HS) code</label>
-            <input
+            <Label htmlFor="peCustomsCode" className="label-caps mb-2 block">
+              Customs (HS) code
+            </Label>
+            <Input
+              id="peCustomsCode"
               name="customsCode"
               defaultValue={initial.customsCode ?? ""}
               placeholder="e.g. 9701.10"
-              className={inputClass}
+              className="border-line"
             />
           </div>
         </div>
 
         <div>
-          <label className="label-caps block mb-2">Customs description</label>
-          <input
+          <Label htmlFor="peCustomsDescription" className="label-caps mb-2 block">
+            Customs description
+          </Label>
+          <Input
+            id="peCustomsDescription"
             name="customsDescription"
             defaultValue={initial.customsDescription ?? ""}
             placeholder="e.g. Framed art print — leave blank to use the title"
-            className={inputClass}
+            className="border-line"
           />
         </div>
       </div>

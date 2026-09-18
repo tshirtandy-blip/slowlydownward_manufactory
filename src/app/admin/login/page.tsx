@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -26,35 +30,45 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center px-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm border hairline p-8">
-        <h1 className="font-display text-2xl mb-1">Slowly Downward</h1>
-        <p className="label-caps mb-8 text-stone">Staff sign in</p>
+    <div className="flex min-h-screen items-center justify-center bg-paper px-6">
+      <Card className="w-full max-w-sm border-line shadow-none">
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit}>
+            <h1 className="font-display text-2xl mb-1">Slowly Downward</h1>
+            <p className="label-caps mb-8 text-stone">Staff sign in</p>
 
-        <label className="label-caps block mb-2">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="border hairline bg-transparent px-3 py-2 text-sm w-full mb-4 focus:outline-none focus:border-ink"
-        />
+            <Label htmlFor="loginEmail" className="label-caps mb-2 block">
+              Email
+            </Label>
+            <Input
+              id="loginEmail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="mb-4 border-line"
+            />
 
-        <label className="label-caps block mb-2">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="border hairline bg-transparent px-3 py-2 text-sm w-full mb-6 focus:outline-none focus:border-ink"
-        />
+            <Label htmlFor="loginPassword" className="label-caps mb-2 block">
+              Password
+            </Label>
+            <Input
+              id="loginPassword"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="mb-6 border-line"
+            />
 
-        {error && <p className="text-sm text-accent mb-4">{error}</p>}
+            {error && <p className="mb-4 text-sm text-accent">{error}</p>}
 
-        <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
