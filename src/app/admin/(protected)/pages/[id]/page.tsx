@@ -7,6 +7,9 @@ import { ConfirmSubmitButton } from "@/components/admin/ConfirmSubmitButton";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { SiteHeader } from "@/components/storefront/SiteHeader";
 import { updatePageMeta, deletePage } from "../actions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +28,7 @@ export default async function PageEditorPage({ params }: { params: { id: string 
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <Link href="/admin/pages" className="label-caps text-stone hover:text-ink">
             ← All pages
@@ -39,50 +42,65 @@ export default async function PageEditorPage({ params }: { params: { id: string 
 
       <div className="mb-8">
         <p className="label-caps mb-2">Preview — your site's actual header</p>
-        <div className="border hairline overflow-hidden">
+        <div className="border border-line overflow-hidden">
           <SiteHeader />
         </div>
       </div>
 
-      <details className="border hairline p-5 mb-8 max-w-lg">
-        <summary className="label-caps cursor-pointer">Page settings</summary>
-        <form action={boundMeta} className="space-y-4 mt-4">
-          <div>
-            <label className="label-caps block mb-2">Title</label>
-            <input name="title" defaultValue={page.title} required className="border hairline bg-transparent px-3 py-2 text-sm w-full" />
-          </div>
-          {page.slug !== "home" && (
-            <div>
-              <label className="label-caps block mb-2">Address</label>
-              <div className="flex items-center gap-1 text-sm">
-                <span className="text-stone">/</span>
-                <input name="slug" defaultValue={page.slug} required className="border hairline bg-transparent px-3 py-2 text-sm w-full" />
+      <details className="mb-8 max-w-lg">
+        <summary className="label-caps w-fit cursor-pointer">Page settings</summary>
+        <Card className="mt-4 border-line shadow-none">
+          <CardContent className="p-5">
+            <form action={boundMeta} className="space-y-4">
+              <div>
+                <Label htmlFor="pageTitle" className="label-caps mb-2 block">
+                  Title
+                </Label>
+                <Input id="pageTitle" name="title" defaultValue={page.title} required className="border-line" />
               </div>
-            </div>
-          )}
-          {page.slug === "home" ? (
-            <p className="text-xs text-stone">The home page is always live — it doesn't have a draft state.</p>
-          ) : (
-            <div>
-              <label className="label-caps block mb-2">Status</label>
-              <select name="status" defaultValue={page.status} className="border hairline bg-transparent px-3 py-2 text-sm w-full">
-                <option value="DRAFT">Draft (only visible to you, signed in)</option>
-                <option value="PUBLISHED">Published</option>
-              </select>
-            </div>
-          )}
-          <SaveButton>Save settings</SaveButton>
-        </form>
-        {page.slug !== "home" && (
-          <form action={boundDelete} className="mt-4 pt-4 border-t hairline">
-            <ConfirmSubmitButton
-              confirmText={`Delete "${page.title}"? This can't be undone.`}
-              className="text-xs text-stone hover:text-accent"
-            >
-              Delete this page
-            </ConfirmSubmitButton>
-          </form>
-        )}
+              {page.slug !== "home" && (
+                <div>
+                  <Label htmlFor="pageSlug" className="label-caps mb-2 block">
+                    Address
+                  </Label>
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="text-stone">/</span>
+                    <Input id="pageSlug" name="slug" defaultValue={page.slug} required className="border-line" />
+                  </div>
+                </div>
+              )}
+              {page.slug === "home" ? (
+                <p className="text-xs text-stone">The home page is always live — it doesn't have a draft state.</p>
+              ) : (
+                <div>
+                  <Label htmlFor="pageStatus" className="label-caps mb-2 block">
+                    Status
+                  </Label>
+                  <select
+                    id="pageStatus"
+                    name="status"
+                    defaultValue={page.status}
+                    className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="DRAFT">Draft (only visible to you, signed in)</option>
+                    <option value="PUBLISHED">Published</option>
+                  </select>
+                </div>
+              )}
+              <SaveButton>Save settings</SaveButton>
+            </form>
+            {page.slug !== "home" && (
+              <form action={boundDelete} className="mt-4 border-t border-line pt-4">
+                <ConfirmSubmitButton
+                  confirmText={`Delete "${page.title}"? This can't be undone.`}
+                  className="text-xs text-stone hover:text-accent"
+                >
+                  Delete this page
+                </ConfirmSubmitButton>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </details>
 
       <PageBuilder

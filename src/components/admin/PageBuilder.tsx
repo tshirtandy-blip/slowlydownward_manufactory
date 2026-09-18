@@ -14,13 +14,22 @@ import { savePageBlocks } from "@/app/admin/(protected)/pages/actions";
 import { savePrintContentBlocks } from "@/app/admin/(protected)/pages/products/actions";
 import { ImageDropzone } from "@/components/admin/ImageDropzone";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-const inputClass = "border hairline bg-transparent px-3 py-2 text-sm w-full";
+const inputClass = "border-line";
+const selectClass =
+  "flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="label-caps block mb-2">{label}</label>
+      <Label className="label-caps mb-2 block">{label}</Label>
       {children}
     </div>
   );
@@ -117,31 +126,31 @@ export function PageBuilder({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 sticky top-0 bg-paper py-3 z-10 border-b hairline">
+      <div className="sticky top-0 z-10 mb-6 flex items-center justify-between border-b border-line bg-paper py-3">
         <p className="label-caps">
           {blocks.length} block{blocks.length === 1 ? "" : "s"}
           {dirty && " · unsaved changes"}
         </p>
         <div className="flex items-center gap-4">
           {error && <p className="text-xs text-accent">{error}</p>}
-          <button onClick={save} disabled={saving || !dirty} className="btn-primary disabled:opacity-40">
+          <Button onClick={save} disabled={saving || !dirty}>
             {saving ? "Saving…" : !dirty && justSaved ? "Saved" : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="space-y-4">
         {blocks.map((block, i) => (
-          <div
+          <Card
             key={block.id}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(i)}
-            className="border hairline bg-white"
+            className="border-line shadow-none"
           >
             <div
               draggable
               onDragStart={() => setDragIndex(i)}
-              className="flex items-center justify-between px-4 py-2 border-b hairline bg-line/40 cursor-move select-none"
+              className="flex cursor-move select-none items-center justify-between border-b border-line bg-line/40 px-4 py-2"
             >
               <span className="label-caps">⠿ {BLOCK_DEFS[block.type].label}</span>
               <div className="flex items-center gap-3 text-xs">
@@ -164,30 +173,30 @@ export function PageBuilder({
                 </button>
               </div>
             </div>
-            <div className="p-4">
+            <CardContent className="p-4">
               <BlockFields block={block} onChange={(patch) => updateBlock(i, patch)} prints={prints} collections={collections} />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
 
         {blocks.length === 0 && (
-          <p className="text-stone text-sm py-12 text-center border hairline border-dashed">
+          <p className="border border-dashed border-line py-12 text-center text-sm text-stone">
             No content blocks yet — add one below.
           </p>
         )}
       </div>
 
-      <div className="flex items-center gap-3 mt-6 pt-6 border-t hairline">
-        <select value={addType} onChange={(e) => setAddType(e.target.value as BlockType)} className={inputClass + " max-w-[220px]"}>
+      <div className="mt-6 flex items-center gap-3 border-t border-line pt-6">
+        <select value={addType} onChange={(e) => setAddType(e.target.value as BlockType)} className={cn(selectClass, "max-w-[220px]")}>
           {BLOCK_TYPES.map((type) => (
             <option key={type} value={type}>
               {BLOCK_DEFS[type].label}
             </option>
           ))}
         </select>
-        <button type="button" onClick={addBlock} className="btn-secondary">
+        <Button type="button" variant="secondary" onClick={addBlock}>
           + Add block
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -209,13 +218,13 @@ function BlockFields({
       return (
         <div className="space-y-4">
           <Field label="Eyebrow (small caps line above the heading)">
-            <input value={block.eyebrow ?? ""} onChange={(e) => onChange({ eyebrow: e.target.value })} className={inputClass} />
+            <Input value={block.eyebrow ?? ""} onChange={(e) => onChange({ eyebrow: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Heading">
-            <input value={block.heading} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
+            <Input value={block.heading} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Subheading">
-            <textarea value={block.subheading ?? ""} onChange={(e) => onChange({ subheading: e.target.value })} rows={2} className={inputClass} />
+            <Textarea value={block.subheading ?? ""} onChange={(e) => onChange({ subheading: e.target.value })} rows={2} className={inputClass} />
           </Field>
           <ImageDropzone
             value={block.imageUrl ?? ""}
@@ -237,10 +246,10 @@ function BlockFields({
         <div className="space-y-4">
           <ImageDropzone value={block.imageUrl} onChange={(url) => onChange({ imageUrl: url })} label="Image" />
           <Field label="Caption (optional)">
-            <input value={block.caption ?? ""} onChange={(e) => onChange({ caption: e.target.value })} className={inputClass} />
+            <Input value={block.caption ?? ""} onChange={(e) => onChange({ caption: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Width">
-            <select value={block.width ?? "normal"} onChange={(e) => onChange({ width: e.target.value })} className={inputClass}>
+            <select value={block.width ?? "normal"} onChange={(e) => onChange({ width: e.target.value })} className={selectClass}>
               <option value="normal">Normal</option>
               <option value="wide">Wide</option>
               <option value="full">Full width</option>
@@ -254,13 +263,13 @@ function BlockFields({
         <div className="space-y-4">
           <ImageDropzone value={block.imageUrl} onChange={(url) => onChange({ imageUrl: url })} label="Image" />
           <Field label="Image position">
-            <select value={block.imagePosition} onChange={(e) => onChange({ imagePosition: e.target.value })} className={inputClass}>
+            <select value={block.imagePosition} onChange={(e) => onChange({ imagePosition: e.target.value })} className={selectClass}>
               <option value="left">Image on left</option>
               <option value="right">Image on right</option>
             </select>
           </Field>
           <Field label="Heading (optional)">
-            <input value={block.heading ?? ""} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
+            <Input value={block.heading ?? ""} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Text">
             <RichTextEditor value={block.body} onChange={(html) => onChange({ body: html })} />
@@ -273,33 +282,35 @@ function BlockFields({
       return (
         <div className="space-y-4">
           {images.map((img, i) => (
-            <div key={i} className="border hairline p-3">
-              <ImageDropzone
-                value={img.url}
-                onChange={(url) => onChange({ images: images.map((im, j) => (j === i ? { ...im, url } : im)) })}
-              />
-              <div className="flex gap-2 items-center mt-2">
-                <input
-                  value={img.caption ?? ""}
-                  onChange={(e) =>
-                    onChange({ images: images.map((im, j) => (j === i ? { ...im, caption: e.target.value } : im)) })
-                  }
-                  placeholder="Caption (optional)"
-                  className={inputClass + " flex-1"}
+            <Card key={i} className="border-line shadow-none">
+              <CardContent className="p-3">
+                <ImageDropzone
+                  value={img.url}
+                  onChange={(url) => onChange({ images: images.map((im, j) => (j === i ? { ...im, url } : im)) })}
                 />
-                <button
-                  type="button"
-                  onClick={() => onChange({ images: images.filter((_, j) => j !== i) })}
-                  className="text-xs text-stone hover:text-accent px-2 py-2 shrink-0"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    value={img.caption ?? ""}
+                    onChange={(e) =>
+                      onChange({ images: images.map((im, j) => (j === i ? { ...im, caption: e.target.value } : im)) })
+                    }
+                    placeholder="Caption (optional)"
+                    className={cn(inputClass, "flex-1")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onChange({ images: images.filter((_, j) => j !== i) })}
+                    className="shrink-0 px-2 py-2 text-xs text-stone hover:text-accent"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
-          <button type="button" onClick={() => onChange({ images: [...images, { url: "", caption: "" }] })} className="btn-secondary !px-4 !py-2">
+          <Button type="button" variant="secondary" onClick={() => onChange({ images: [...images, { url: "", caption: "" }] })}>
             + Add image
-          </button>
+          </Button>
         </div>
       );
     }
@@ -308,10 +319,10 @@ function BlockFields({
       return (
         <div className="space-y-4">
           <Field label="Quote">
-            <textarea value={block.text} onChange={(e) => onChange({ text: e.target.value })} rows={3} className={inputClass} />
+            <Textarea value={block.text} onChange={(e) => onChange({ text: e.target.value })} rows={3} className={inputClass} />
           </Field>
           <Field label="Attribution (optional)">
-            <input value={block.attribution ?? ""} onChange={(e) => onChange({ attribution: e.target.value })} className={inputClass} />
+            <Input value={block.attribution ?? ""} onChange={(e) => onChange({ attribution: e.target.value })} className={inputClass} />
           </Field>
         </div>
       );
@@ -320,10 +331,10 @@ function BlockFields({
       return (
         <div className="space-y-4">
           <Field label="Button label">
-            <input value={block.label} onChange={(e) => onChange({ label: e.target.value })} className={inputClass} />
+            <Input value={block.label} onChange={(e) => onChange({ label: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Link (a path like /about, or a full https:// URL)">
-            <input value={block.href} onChange={(e) => onChange({ href: e.target.value })} className={inputClass} />
+            <Input value={block.href} onChange={(e) => onChange({ href: e.target.value })} className={inputClass} />
           </Field>
         </div>
       );
@@ -331,7 +342,7 @@ function BlockFields({
     case "spacer":
       return (
         <Field label="Height">
-          <select value={block.size} onChange={(e) => onChange({ size: e.target.value })} className={inputClass}>
+          <select value={block.size} onChange={(e) => onChange({ size: e.target.value })} className={selectClass}>
             <option value="sm">Small</option>
             <option value="md">Medium</option>
             <option value="lg">Large</option>
@@ -343,10 +354,10 @@ function BlockFields({
       return (
         <div className="space-y-4">
           <Field label="Heading (optional)">
-            <input value={block.heading ?? ""} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
+            <Input value={block.heading ?? ""} onChange={(e) => onChange({ heading: e.target.value })} className={inputClass} />
           </Field>
           <Field label="Which prints">
-            <select value={block.mode} onChange={(e) => onChange({ mode: e.target.value })} className={inputClass}>
+            <select value={block.mode} onChange={(e) => onChange({ mode: e.target.value })} className={selectClass}>
               <option value="all">All published prints</option>
               <option value="collection">One collection</option>
               <option value="selected">Hand-picked prints</option>
@@ -354,7 +365,7 @@ function BlockFields({
           </Field>
           {block.mode === "collection" && (
             <Field label="Collection">
-              <select value={block.collectionId ?? ""} onChange={(e) => onChange({ collectionId: e.target.value })} className={inputClass}>
+              <select value={block.collectionId ?? ""} onChange={(e) => onChange({ collectionId: e.target.value })} className={selectClass}>
                 <option value="">Choose a collection…</option>
                 {collections.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -366,37 +377,38 @@ function BlockFields({
           )}
           {block.mode === "selected" && (
             <Field label="Prints to show (in the order you check them)">
-              <div className="border hairline max-h-64 overflow-y-auto divide-y divide-line">
-                {prints.length === 0 && <p className="px-3 py-2 text-sm text-stone">No prints yet.</p>}
-                {prints.map((p) => {
-                  const current = block.printIds ?? [];
-                  const checked = current.includes(p.id);
-                  return (
-                    <label key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) =>
-                          onChange({
-                            printIds: e.target.checked ? [...current, p.id] : current.filter((id) => id !== p.id),
-                          })
-                        }
-                      />
-                      {p.title}
-                    </label>
-                  );
-                })}
-              </div>
+              <Card className="max-h-64 divide-y divide-line overflow-y-auto border-line shadow-none">
+                <CardContent className="p-0">
+                  {prints.length === 0 && <p className="px-3 py-2 text-sm text-stone">No prints yet.</p>}
+                  {prints.map((p) => {
+                    const current = block.printIds ?? [];
+                    const checked = current.includes(p.id);
+                    return (
+                      <label key={p.id} className="flex items-center gap-2 border-b border-line px-3 py-2 text-sm last:border-0">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            onChange({
+                              printIds: v === true ? [...current, p.id] : current.filter((id) => id !== p.id),
+                            })
+                          }
+                        />
+                        {p.title}
+                      </label>
+                    );
+                  })}
+                </CardContent>
+              </Card>
             </Field>
           )}
           {block.mode !== "selected" && (
             <Field label="Limit (optional — leave blank to show all)">
-              <input
+              <Input
                 type="number"
                 min={1}
                 value={block.limit ?? ""}
                 onChange={(e) => onChange({ limit: e.target.value ? Number(e.target.value) : undefined })}
-                className={inputClass + " max-w-[120px]"}
+                className={cn(inputClass, "max-w-[120px]")}
               />
             </Field>
           )}

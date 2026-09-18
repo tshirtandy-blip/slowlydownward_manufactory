@@ -18,7 +18,7 @@ export default async function ProductContentEditorPage({ params }: { params: { p
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <Link href="/admin/pages/products" className="label-caps text-stone hover:text-ink">
             ← Product page content
@@ -30,7 +30,7 @@ export default async function ProductContentEditorPage({ params }: { params: { p
         </Link>
       </div>
 
-      <p className="text-sm text-stone mb-8 max-w-lg">
+      <p className="mb-8 max-w-lg text-sm text-stone">
         These blocks appear below the photo and buy box on this print's page. The
         core details (image, price, technique, dimensions) are edited from Stock,
         not here.
@@ -38,7 +38,7 @@ export default async function ProductContentEditorPage({ params }: { params: { p
 
       <div className="mb-8">
         <p className="label-caps mb-2">Preview — your site's actual header</p>
-        <div className="border hairline overflow-hidden">
+        <div className="border border-line overflow-hidden">
           <SiteHeader />
         </div>
       </div>
