@@ -11,9 +11,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   experimental: {
-    // puppeteer-core + @sparticuz/chromium (Certificate of Authenticity PDF
-    // generation — see src/lib/coa-pdf.ts) ship a native Chromium binary and
-    // must NOT be bundled/traced by webpack like ordinary JS — Next.js
+    // puppeteer-core + @sparticuz/chromium-min (Certificate of Authenticity
+    // PDF generation — see src/lib/coa-pdf.ts) must NOT be bundled/traced by
+    // webpack like ordinary JS — Next.js
     // should just require() them from node_modules at runtime, same as any
     // other server-only native dependency. `serverExternalPackages` is the
     // stable, top-level name for this option in Next.js 15+; this app is
@@ -22,7 +22,7 @@ const nextConfig = {
     // key is silently ignored on 14.x ("Unrecognized key(s)" build
     // warning), which is what let puppeteer/chromium get bundled by
     // webpack instead of externalized.
-    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
+    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium-min"],
     // Every admin/storefront page that reads from the database is already
     // marked `dynamic = "force-dynamic"`, so the SERVER always re-fetches
     // it fresh — but by default Next.js still caches a page's result in

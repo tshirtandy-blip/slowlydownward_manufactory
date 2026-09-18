@@ -19,8 +19,8 @@ type PreviewResult = { ok: true; pdfBase64: string } | { ok: false; error: strin
  *
  * Deliberately plain <textarea>s rather than a code-editor library — the
  * one real new dependency this feature needed is the PDF engine itself
- * (puppeteer-core + @sparticuz/chromium — see src/lib/coa-pdf.ts), not the
- * editor UI.
+ * (puppeteer-core + @sparticuz/chromium-min — see src/lib/coa-pdf.ts), not
+ * the editor UI.
  */
 export function CoaTemplateEditor({
   initial,

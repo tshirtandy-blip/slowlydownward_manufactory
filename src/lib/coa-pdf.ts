@@ -11,11 +11,29 @@ import { substituteMergeFields, type ResolvedCoaTemplate } from "@/lib/coa-templ
  * Unlike src/lib/commercial-invoice.ts (pdfkit — explicit x/y drawing
  * calls), a COA template is owner-authored, arbitrary HTML/CSS, so this
  * needs an actual browser engine to render it: puppeteer-core drives
- * headless Chromium, and @sparticuz/chromium supplies a Chromium binary
+ * headless Chromium, and @sparticuz/chromium-min supplies a Chromium build
  * that runs inside a Vercel serverless function (this app has no
  * Dockerfile / `output: "standalone"`, so there's no system-installed
  * Chromium to point at in production).
+ *
+ * Uses the "-min" package (not the full @sparticuz/chromium) fetching its
+ * binary from a remote URL at runtime, rather than the full package, which
+ * bundles the binary locally. Next.js's build-time file tracing can't see
+ * @sparticuz/chromium's dynamically-resolved binary path, so on Vercel the
+ * bundled binary silently gets left out of the deployed function and every
+ * call fails with "The input directory .../.next/server/bin does not
+ * exist" — a well-known issue with this package on Vercel specifically.
+ * Fetching the (pre-packed, brotli-compressed) binary from a URL at
+ * runtime sidesteps that tracing problem entirely. CHROMIUM_PACK_URL lets
+ * this be overridden (e.g. to a same-region S3/Vercel Blob mirror for
+ * lower cold-start latency) without a code change; it defaults to the
+ * matching version's official release asset, which is enough for an
+ * occasional admin action like this.
  */
+
+const CHROMIUM_PACK_URL =
+  process.env.CHROMIUM_PACK_URL ??
+  "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
 
 type ItemWithRelations = OrderItem & { print: Print; edition: Edition | null };
 
@@ -26,7 +44,7 @@ const PAGE_SIZE_MM: Record<string, { width: number; height: number }> = {
 };
 
 async function launchBrowser() {
-  // Local development escape hatch: @sparticuz/chromium's bundled binary
+  // Local development escape hatch: @sparticuz/chromium-min's remote binary
   // targets Vercel/AWS Lambda's Linux runtime and will not launch on a
   // typical macOS/Windows dev machine. Point CHROME_EXECUTABLE_PATH (in
   // .env.local) at a real local Chrome/Chromium install to test COA
@@ -37,10 +55,10 @@ async function launchBrowser() {
     return puppeteer.launch({ executablePath: localExecutablePath, headless: true });
   }
 
-  const chromium = (await import("@sparticuz/chromium")).default;
+  const chromium = (await import("@sparticuz/chromium-min")).default;
   return puppeteer.launch({
     args: chromium.args,
-    executablePath: await chromium.executablePath(),
+    executablePath: await chromium.executablePath(CHROMIUM_PACK_URL),
     headless: true,
   });
 }
