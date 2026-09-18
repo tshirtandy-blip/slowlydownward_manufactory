@@ -646,6 +646,14 @@ model Campaign {
   scheduledFor      DateTime?
   sentAt            DateTime?
 
+  // Set only on a row brought in by scripts/import-mailchimp-campaigns.ts
+  // (the one-off historical backfill — see README > Resend Broadcasts) —
+  // null for every campaign actually composed and sent from Admin >
+  // Campaigns. The @unique is what makes that script safe to re-run: each
+  // Mailchimp campaign upserts against its own id instead of being
+  // duplicated on a second pass.
+  mailchimpCampaignId String? @unique
+
   createdByUserId String?
   createdBy       User?   @relation(fields: [createdByUserId], references: [id])
   createdAt       DateTime @default(now())
