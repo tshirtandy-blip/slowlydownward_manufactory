@@ -2,9 +2,15 @@
  * One-off backfill: pulls every already-sent Mailchimp campaign into the
  * same Campaign table Admin > Campaigns (Resend Broadcasts) writes to, so
  * they show up in the public archive (src/app/archive) alongside anything
- * sent from here on. Safe to re-run — each Mailchimp campaign upserts
- * against its own id (Campaign.mailchimpCampaignId), so a second run just
- * updates rows it already imported rather than duplicating them.
+ * sent from here on. Also pulls Mailchimp's own opens/clicks/bounces/
+ * complaints for each campaign as a one-time snapshot (see
+ * Campaign.mailchimpOpens etc.) — those stats would otherwise show as a
+ * flat 0 in Admin > Campaigns, since nothing was ever actually sent
+ * through Resend for an imported campaign, so there's no webhook data to
+ * count. Safe to re-run — each Mailchimp campaign upserts against its own
+ * id (Campaign.mailchimpCampaignId), so a second run just updates rows it
+ * already imported (including refreshing these stats) rather than
+ * duplicating them.
  *
  * This is deliberately NOT run automatically anywhere in the app — see
  * README > Resend Broadcasts (campaigns) > "One-off historical import".
@@ -81,6 +87,42 @@ async function fetchCampaignHtml(apiKey: string, server: string, campaignId: str
   return body.html && body.html.trim() ? body.html : null;
 }
 
+type MailchimpReport = {
+  opens?: { unique_opens?: number };
+  clicks?: { unique_clicks?: number };
+  bounces?: { hard_bounces?: number; soft_bounces?: number };
+  abuse_reports?: number;
+};
+
+/** Mailchimp's own engagement numbers for one campaign — a one-time
+ * snapshot, since nothing was ever actually sent through Resend for an
+ * imported campaign, so there's no webhook data (CampaignEvent rows) to
+ * show live counts from otherwise (see Campaign.mailchimpOpens etc. in
+ * schema.prisma). Returns nulls rather than throwing on failure — a
+ * missing report shouldn't stop the campaign itself from importing. */
+async function fetchCampaignReport(
+  apiKey: string,
+  server: string,
+  campaignId: string
+): Promise<{ opens: number | null; clicks: number | null; bounces: number | null; complaints: number | null }> {
+  const res = await fetch(`https://${server}.api.mailchimp.com/3.0/reports/${campaignId}`, {
+    headers: { Authorization: authHeader(apiKey) },
+  });
+  if (!res.ok) {
+    console.warn(`  report fetch failed (${res.status}) — leaving stats blank`);
+    return { opens: null, clicks: null, bounces: null, complaints: null };
+  }
+  const body = (await res.json()) as MailchimpReport;
+  const hardBounces = body.bounces?.hard_bounces ?? 0;
+  const softBounces = body.bounces?.soft_bounces ?? 0;
+  return {
+    opens: body.opens?.unique_opens ?? null,
+    clicks: body.clicks?.unique_clicks ?? null,
+    bounces: body.bounces ? hardBounces + softBounces : null,
+    complaints: body.abuse_reports ?? null,
+  };
+}
+
 async function main() {
   const { apiKey, server } = getConfig();
   if (!server) throw new Error("MAILCHIMP_API_KEY doesn't look right — expected it to end in -usXX.");
@@ -114,6 +156,8 @@ async function main() {
       continue;
     }
 
+    const report = await fetchCampaignReport(apiKey, server, c.id);
+
     await prisma.campaign.upsert({
       where: { mailchimpCampaignId: c.id },
       update: {
@@ -121,6 +165,10 @@ async function main() {
         html,
         sentAt: c.send_time ? new Date(c.send_time) : undefined,
         recipientCount: c.emails_sent ?? undefined,
+        mailchimpOpens: report.opens,
+        mailchimpClicks: report.clicks,
+        mailchimpBounces: report.bounces,
+        mailchimpComplaints: report.complaints,
       },
       create: {
         subject,
@@ -130,6 +178,10 @@ async function main() {
         sentAt: c.send_time ? new Date(c.send_time) : new Date(),
         recipientCount: c.emails_sent ?? null,
         mailchimpCampaignId: c.id,
+        mailchimpOpens: report.opens,
+        mailchimpClicks: report.clicks,
+        mailchimpBounces: report.bounces,
+        mailchimpComplaints: report.complaints,
       },
     });
     imported++;

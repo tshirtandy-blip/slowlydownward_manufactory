@@ -45,6 +45,19 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   const recipientCount = campaign.recipientCount ?? 0;
   const pct = (n: number) => (recipientCount ? `${Math.round((n / recipientCount) * 100)}%` : "—");
 
+  // A campaign imported from Mailchimp (scripts/import-mailchimp-campaigns.ts)
+  // was never actually sent through Resend, so it has no CampaignEvent rows
+  // at all — `counts` is empty for it. Fall back to the one-time Mailchimp
+  // stats snapshot taken at import time in that case; a campaign sent from
+  // here always has real (possibly zero) event counts, which take priority.
+  const opened = counts["email.opened"] ?? campaign.mailchimpOpens ?? 0;
+  const clicked = counts["email.clicked"] ?? campaign.mailchimpClicks ?? 0;
+  const bounced = counts["email.bounced"] ?? campaign.mailchimpBounces ?? 0;
+  const complained = counts["email.complained"] ?? campaign.mailchimpComplaints ?? 0;
+  // Mailchimp's report API has no direct "delivered" figure — recipients
+  // minus bounces is the closest honest estimate for an imported campaign.
+  const delivered = counts["email.delivered"] ?? (campaign.mailchimpCampaignId ? Math.max(recipientCount - bounced, 0) : 0);
+
   return (
     <div className="max-w-2xl">
       <Link href="/admin/campaigns" className="label-caps text-stone hover:text-ink">
@@ -80,28 +93,34 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           <div className="bg-paper p-4">
             <p className="label-caps text-stone mb-1">Opened</p>
             <p className="font-display text-xl">
-              {counts["email.opened"] ?? 0} <span className="text-sm text-stone">({pct(counts["email.opened"] ?? 0)})</span>
+              {opened} <span className="text-sm text-stone">({pct(opened)})</span>
             </p>
           </div>
           <div className="bg-paper p-4">
             <p className="label-caps text-stone mb-1">Clicked</p>
             <p className="font-display text-xl">
-              {counts["email.clicked"] ?? 0} <span className="text-sm text-stone">({pct(counts["email.clicked"] ?? 0)})</span>
+              {clicked} <span className="text-sm text-stone">({pct(clicked)})</span>
             </p>
           </div>
           <div className="bg-paper p-4">
             <p className="label-caps text-stone mb-1">Bounced</p>
-            <p className="font-display text-xl">{counts["email.bounced"] ?? 0}</p>
+            <p className="font-display text-xl">{bounced}</p>
           </div>
           <div className="bg-paper p-4">
             <p className="label-caps text-stone mb-1">Complained</p>
-            <p className="font-display text-xl">{counts["email.complained"] ?? 0}</p>
+            <p className="font-display text-xl">{complained}</p>
           </div>
           <div className="bg-paper p-4">
             <p className="label-caps text-stone mb-1">Delivered</p>
-            <p className="font-display text-xl">{counts["email.delivered"] ?? 0}</p>
+            <p className="font-display text-xl">{delivered}</p>
           </div>
         </div>
+      )}
+      {campaign.mailchimpCampaignId && (
+        <p className="text-xs text-stone mb-8 -mt-6">
+          Opens/clicks/bounces/complaints above are a one-time snapshot from Mailchimp taken when this campaign was
+          imported, not live — this campaign was never actually sent through Resend.
+        </p>
       )}
 
       <p className="label-caps text-stone mb-2">Message</p>

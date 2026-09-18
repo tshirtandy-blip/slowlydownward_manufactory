@@ -654,6 +654,19 @@ model Campaign {
   // duplicated on a second pass.
   mailchimpCampaignId String? @unique
 
+  // A one-time snapshot of Mailchimp's own engagement stats for an
+  // imported campaign (see scripts/import-mailchimp-campaigns.ts, which
+  // pulls these from Mailchimp's GET /reports/{id}) — never updated again
+  // after import. A campaign actually sent from here has none of these set
+  // and shows live counts from `events` instead; an imported one has no
+  // `events` rows at all (nothing was ever sent through Resend for it), so
+  // without this it would show "0" for everything even though Mailchimp
+  // really did track opens/clicks for it at the time.
+  mailchimpOpens      Int?
+  mailchimpClicks     Int?
+  mailchimpBounces    Int?
+  mailchimpComplaints Int?
+
   createdByUserId String?
   createdBy       User?   @relation(fields: [createdByUserId], references: [id])
   createdAt       DateTime @default(now())

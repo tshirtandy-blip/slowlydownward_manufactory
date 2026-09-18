@@ -69,9 +69,15 @@ export default async function CampaignsPage() {
                 </td>
                 <td className="p-3 text-stone">{c.recipientCount ?? "—"}</td>
                 <td className="p-3 text-stone">
-                  {c.status === "SENT" && c.recipientCount
-                    ? `${c._count.events} (${Math.round((c._count.events / c.recipientCount) * 100)}%)`
-                    : "—"}
+                  {(() => {
+                    // A campaign imported from Mailchimp has no live "email.opened"
+                    // events (nothing was ever sent through Resend for it) — fall
+                    // back to the one-time Mailchimp stats snapshot taken at import.
+                    const opens = c._count.events || c.mailchimpOpens || 0;
+                    return c.status === "SENT" && c.recipientCount
+                      ? `${opens} (${Math.round((opens / c.recipientCount) * 100)}%)`
+                      : "—";
+                  })()}
                 </td>
                 <td className="p-3 text-right">
                   {c.status !== "SCHEDULED" && c.status !== "SENDING" && (
