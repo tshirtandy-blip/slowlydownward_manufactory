@@ -161,5 +161,12 @@ export async function addSocialLink(formData: FormData) {
   });
 
   revalidateFooter();
-  revalidatePath("/admin/settings/footer");
+  // SocialLinksManager keeps its row list in client-side state, seeded once
+  // from the `links` prop on mount — revalidatePath() alone re-fetches the
+  // server data but can't push it back into that already-mounted state, so
+  // a newly added link would exist in the database yet never actually show
+  // up on screen (looking exactly like the "Add" button silently failed).
+  // A real navigation, same as addFooterLink already does, forces the
+  // manager to remount with the fresh list instead.
+  redirect("/admin/settings/footer");
 }
