@@ -25,16 +25,23 @@ export default async function CustomersPage({
 }) {
   const q = searchParams.q?.trim();
   const offset = Math.max(0, Number(searchParams.offset) || 0);
+  // Match each typed word independently against any field, rather than the
+  // whole query string against a single field — otherwise "Mandip Bhattal"
+  // finds nobody, since firstName ("Mandip") and lastName ("Bhattal") are
+  // separate columns and neither alone contains the full two-word string.
+  const searchTokens = q ? q.split(/\s+/).filter(Boolean) : [];
 
   const customers = await prisma.customer.findMany({
-    where: q
+    where: searchTokens.length
       ? {
-          OR: [
-            { email: { contains: q, mode: "insensitive" as const } },
-            { firstName: { contains: q, mode: "insensitive" as const } },
-            { lastName: { contains: q, mode: "insensitive" as const } },
-            { phone: { contains: q, mode: "insensitive" as const } },
-          ],
+          AND: searchTokens.map((token) => ({
+            OR: [
+              { email: { contains: token, mode: "insensitive" as const } },
+              { firstName: { contains: token, mode: "insensitive" as const } },
+              { lastName: { contains: token, mode: "insensitive" as const } },
+              { phone: { contains: token, mode: "insensitive" as const } },
+            ],
+          })),
         }
       : undefined,
     include: {
