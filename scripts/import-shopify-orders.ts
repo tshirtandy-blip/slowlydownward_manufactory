@@ -141,6 +141,16 @@ function isCompletedSale(financial: string, fulfillment: string): boolean {
   return true;
 }
 
+/** Splits a single "Full Name" string into first/last for cases where we
+ * only have Shopify's combined shipping-address `name` field to go on. */
+function splitName(fullName: string | null | undefined): { first: string | null; last: string | null } {
+  const trimmed = (fullName || "").trim();
+  if (!trimmed) return { first: null, last: null };
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return { first: parts[0], last: null };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const filePath = args.find((a) => !a.startsWith("--"));
@@ -283,9 +293,18 @@ async function main() {
         undefined;
 
       const status = mapStatus(node.displayFinancialStatus, node.displayFulfillmentStatus);
-      const shopFirstName = node.customer?.firstName ?? null;
-      const shopLastName = node.customer?.lastName ?? null;
-      const shopPhone = node.customer?.defaultPhoneNumber?.phoneNumber || node.phone || null;
+      // Shopify's Customer object itself often has no name on file for a
+      // guest checkout — the name only lives on the order's shipping
+      // address in that case. Fall back to it so the Customer record (and
+      // therefore admin's Clients search, which queries
+      // Customer.firstName/lastName, not Order.shippingName) gets a real
+      // name too — matching what the order page already shows via
+      // shippingName above.
+      const addressNameSplit = splitName(addr?.name);
+      const shopFirstName = node.customer?.firstName ?? addr?.firstName ?? addressNameSplit.first ?? null;
+      const shopLastName = node.customer?.lastName ?? addr?.lastName ?? addressNameSplit.last ?? null;
+      const shopPhone =
+        node.customer?.defaultPhoneNumber?.phoneNumber || node.phone || addr?.phone || null;
 
       if (dryRun) {
         created++;
