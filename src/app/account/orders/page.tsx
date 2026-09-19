@@ -62,7 +62,15 @@ export default async function OrderHistoryPage() {
                       })}
                     </p>
                   </div>
-                  <span className="label-caps">{STATUS_LABELS[order.status] ?? order.status}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="label-caps">{STATUS_LABELS[order.status] ?? order.status}</span>
+                    <a
+                      href={`/account/orders/${order.id}/receipt`}
+                      className="text-xs text-stone underline hover:text-ink"
+                    >
+                      Download receipt
+                    </a>
+                  </div>
                 </div>
                 <ul className="text-sm mb-3">
                   {order.items.map((item) => (

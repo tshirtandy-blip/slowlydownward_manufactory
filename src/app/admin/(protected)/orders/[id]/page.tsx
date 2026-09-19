@@ -8,6 +8,7 @@ import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { ManualOrderPanel } from "@/components/admin/ManualOrderPanel";
 import { ShippingLabelPreview } from "@/components/admin/ShippingLabelPreview";
 import { ResetOrderTestingButton } from "@/components/admin/ResetOrderTestingButton";
+import { OrderItemEditor } from "@/components/admin/OrderItemEditor";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,6 +42,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     const meta = log.meta as any;
     if (meta?.orderItemId && meta?.reason) mismatchReasonByItemId.set(meta.orderItemId, meta.reason);
   }
+
+  // For the "Edit" control on each item row below (re-point to a
+  // different print, e.g. to fix a placeholder created by scripts/
+  // import-shopify-orders.ts) — every print, not just this order's.
+  const prints = await prisma.print.findMany({
+    select: { id: true, title: true, slug: true },
+    orderBy: { title: "asc" },
+  });
 
   return (
     <div className="max-w-3xl">
@@ -163,6 +172,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <TableHead>Edition</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,6 +205,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   </TableCell>
                   <TableCell>{item.print.drawerLocation ?? "—"}</TableCell>
                   <TableCell>{formatMinor(item.unitPriceMinor, order.currency)}</TableCell>
+                  <TableCell>
+                    <OrderItemEditor
+                      orderItemId={item.id}
+                      currentPrintId={item.printId}
+                      currentUnitPriceMinor={item.unitPriceMinor}
+                      currentCurrency={order.currency}
+                      prints={prints}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

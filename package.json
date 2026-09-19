@@ -14,7 +14,8 @@
     "seed": "tsx prisma/seed.ts",
     "import:mailchimp-campaigns": "tsx scripts/import-mailchimp-campaigns.ts",
     "import:mailchimp-audience": "tsx scripts/import-mailchimp-audience.ts",
-    "import:shopify-products": "tsx scripts/import-shopify-products.ts"
+    "import:shopify-products": "tsx scripts/import-shopify-products.ts",
+    "import:shopify-orders": "tsx scripts/import-shopify-orders.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

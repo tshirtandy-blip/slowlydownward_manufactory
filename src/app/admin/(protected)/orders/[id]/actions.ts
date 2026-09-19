@@ -136,6 +136,48 @@ export async function resetOrderForTesting(orderId: string): Promise<{ ok: true 
 }
 // ---------------------------------------------------------------------------
 
+/** Re-points a line item to a different Print and/or adjusts its price —
+ * mainly for cleaning up a historical order imported by scripts/import-
+ * shopify-orders.ts whose item landed on an auto-created placeholder
+ * Print (see that script) because the original Shopify product couldn't
+ * be matched. Keeps Order.subtotalMinor/totalMinor (stored, not derived)
+ * in sync with the change in the same transaction. */
+export async function updateOrderItemProduct(
+  orderItemId: string,
+  data: { printId: string; unitPriceMinor: number }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await requireOrdersAccess();
+
+  if (!Number.isFinite(data.unitPriceMinor) || data.unitPriceMinor < 0) {
+    return { ok: false, error: "Enter a valid price." };
+  }
+
+  try {
+    const item = await prisma.orderItem.findUniqueOrThrow({ where: { id: orderItemId } });
+    const print = await prisma.print.findUnique({ where: { id: data.printId } });
+    if (!print) return { ok: false, error: "That print couldn't be found." };
+
+    const priceDelta = data.unitPriceMinor - item.unitPriceMinor;
+
+    await prisma.$transaction([
+      prisma.orderItem.update({
+        where: { id: orderItemId },
+        data: { printId: data.printId, unitPriceMinor: data.unitPriceMinor },
+      }),
+      prisma.order.update({
+        where: { id: item.orderId },
+        data: { subtotalMinor: { increment: priceDelta }, totalMinor: { increment: priceDelta } },
+      }),
+    ]);
+
+    revalidatePath(`/admin/orders/${item.orderId}`);
+    revalidatePath("/admin/orders");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't update this item." };
+  }
+}
+
 /** Cancels a manual order that's still awaiting payment — releases whatever
  * edition(s) it was holding and invalidates its payment link. Refuses
  * anything not a still-pending manual order (a paid order needs a refund
