@@ -216,6 +216,12 @@ async function main() {
       placeholdersCreated++;
     }
 
+    if (!print) {
+      // Unreachable — the block above always assigns print — but keeps
+      // TypeScript's control-flow narrowing happy across the awaits above.
+      throw new Error(`Failed to resolve or create a Print for line item "${li.title}"`);
+    }
+
     printCache.set(cacheKey, print.id);
     return print.id;
   }
